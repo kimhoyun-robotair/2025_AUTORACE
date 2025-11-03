@@ -1,0 +1,241 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="autorace_sensors">
+
+  <!-- 전방 카메라 + IMU 패키지 -->
+  <xacro:macro name="mount_front_camera_imu"
+               params="parent_link
+                       cam_x:=0.15 cam_y:=0.0 cam_z:=0.14
+                       box_x:=0.05 box_y:=0.05 box_z:=0.04">
+
+    <!-- 카메라/IMU 하우징 -->
+    <joint name="front_cam_imu_joint" type="fixed">
+      <origin xyz="${cam_x} ${cam_y} ${cam_z}" rpy="0 0 0"/>
+      <parent link="${parent_link}"/>
+      <child link="front_cam_imu_link"/>
+    </joint>
+
+    <link name="front_cam_imu_link">
+      <visual>
+        <origin xyz="0 0 ${box_z/2.0}" rpy="0 0 0"/>
+        <geometry><box size="${box_x} ${box_y} ${box_z}"/></geometry>
+        <material name="gray"><color rgba="0.2 0.2 0.2 1.0"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${box_z/2.0}" rpy="0 0 0"/>
+        <geometry><box size="${box_x} ${box_y} ${box_z}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="0.05"/>
+        <origin xyz="0 0 ${box_z/2.0}" rpy="0 0 0"/>
+        <inertia ixx="1e-5" iyy="1e-5" izz="1e-5" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- 카메라 프레임 (optical frame: z forward, x right, y down) -->
+    <joint name="camera_optical_joint" type="fixed">
+      <origin xyz="0 0 ${box_z/2.0}" rpy="-1.57079632679 0 -1.57079632679"/>
+      <parent link="front_cam_imu_link"/>
+      <child  link="camera_optical_frame"/>
+    </joint>
+    <link name="camera_optical_frame"/>
+
+    <!-- IMU 프레임 (같은 하우징 안) -->
+    <joint name="imu_joint" type="fixed">
+      <origin xyz="0 0 ${box_z/4.0}" rpy="0 0 0"/>
+      <parent link="front_cam_imu_link"/>
+      <child  link="imu_link"/>
+    </joint>
+    <link name="imu_link"/>
+  </xacro:macro>
+
+
+    <!-- 상부 LiDAR 마스트 -->
+  <!-- 상부 LiDAR + 지지대(페데스탈) : 차체 윗면 기준 높이로 장착 -->
+  <xacro:macro name="mount_top_lidar_with_pedestal"
+               params="parent_link
+                       lidar_back_face_x:=-0.05
+                       pedestal_h:=0.06
+                       lid_x:=0.055 lid_y:=0.055 lid_z:=0.05
+                       pedestal_xy:=0.05">
+
+    <!-- 차체 윗면 높이(이 파일의 다른 매크로들과 정합) -->
+    <xacro:property name="chassis_top_z" value="0.14"/>
+
+    <!-- LiDAR 하우징 중심 x = 뒤면 + (깊이/2) -->
+    <xacro:property name="lidar_center_x" value="${lidar_back_face_x + (lid_x/2.0)}"/>
+
+    <!-- 지지대: 차체 윗면에서 pedestal_h 만큼 올라감 -->
+    <joint name="lidar_pedestal_joint" type="fixed">
+      <origin xyz="${lidar_center_x} 0.0 ${chassis_top_z}" rpy="0 0 0"/>
+      <parent link="${parent_link}"/>
+      <child  link="lidar_pedestal_link"/>
+    </joint>
+
+    <link name="lidar_pedestal_link">
+      <visual>
+        <origin xyz="0 0 ${pedestal_h/2.0}" rpy="0 0 0"/>
+        <geometry><box size="${pedestal_xy} ${pedestal_xy} ${pedestal_h}"/></geometry>
+        <material name="gray"><color rgba="0.4 0.4 0.45 1"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${pedestal_h/2.0}" rpy="0 0 0"/>
+        <geometry><box size="${pedestal_xy} ${pedestal_xy} ${pedestal_h}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="0.05"/>
+        <origin xyz="0 0 ${pedestal_h/2.0}" rpy="0 0 0"/>
+        <inertia ixx="1e-4" iyy="1e-4" izz="1e-4" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- LiDAR 하우징: 지지대 꼭대기(pedestal_h) 위에 높이 lid_z -->
+    <joint name="top_lidar_joint" type="fixed">
+      <origin xyz="0 0 ${pedestal_h}" rpy="0 0 0"/>
+      <parent link="lidar_pedestal_link"/>
+      <child  link="top_lidar_link"/>
+    </joint>
+
+    <link name="top_lidar_link">
+      <visual>
+        <origin xyz="0 0 ${lid_z/2.0}" rpy="0 0 0"/>
+        <geometry><box size="${lid_x} ${lid_y} ${lid_z}"/></geometry>
+        <material name="blue"><color rgba="0.1 0.3 0.8 1.0"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${lid_z/2.0}" rpy="0 0 0"/>
+        <geometry><box size="${lid_x} ${lid_y} ${lid_z}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="0.10"/>
+        <origin xyz="0 0 ${lid_z/2.0}" rpy="0 0 0"/>
+        <inertia ixx="2e-5" iyy="2e-5" izz="2e-5" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- LiDAR 스캔 프레임 -->
+    <joint name="top_lidar_scan_joint" type="fixed">
+      <origin xyz="0 0 ${lid_z/2.0}" rpy="0 0 0"/>
+      <parent link="top_lidar_link"/>
+      <child  link="top_lidar_frame"/>
+    </joint>
+    <link name="top_lidar_frame"/>
+
+  </xacro:macro>
+
+
+  <!-- 센서 플러그인 토글 가능한 블록 (Camera + LiDAR + IMU) -->
+  <xacro:macro name="enable_sensor_plugins"
+              params="enable_camera:=true
+                      enable_lidar:=true
+                      enable_imu:=true
+
+                      cam_link:=front_cam_imu_link
+                      cam_topic:='/camera/image'
+                      cam_update:=20
+                      cam_hfov:=1.05 cam_w:=640 cam_h:=480
+                      cam_near:=0.2 cam_far:=20.0
+
+                      lidar_link:=top_lidar_link
+                      scan_topic:='/scan'
+                      scan_update:=12
+                      lidar_min:=0.05 lidar_max:=8.0
+
+                      imu_link:=imu_link
+                      imu_topic:='/imu'
+                      imu_update:=100">
+
+    <!-- RGB 카메라 -->
+    <xacro:if value="${enable_camera}">
+      <gazebo reference="${cam_link}">
+        <sensor name="rgb_camera" type="camera">
+          <always_on>1</always_on>
+          <update_rate>${cam_update}</update_rate>
+          <visualize>true</visualize>
+          <topic>${cam_topic}</topic>
+          <gz_frame_id>${cam_link}</gz_frame_id>
+          <camera>
+            <horizontal_fov>${cam_hfov}</horizontal_fov>
+            <image>
+              <width>${cam_w}</width>
+              <height>${cam_h}</height>
+            </image>
+            <clip>
+              <near>${cam_near}</near>
+              <far>${cam_far}</far>
+            </clip>
+          </camera>
+        </sensor>
+      </gazebo>
+    </xacro:if>
+
+    <!-- 2D LiDAR -->
+    <xacro:if value="${enable_lidar}">
+      <gazebo reference="${lidar_link}">
+        <sensor name="top_gpu_lidar" type="gpu_lidar">
+          <always_on>1</always_on>
+          <update_rate>${scan_update}</update_rate>
+          <visualize>true</visualize>
+          <topic>${scan_topic}</topic>
+          <gz_frame_id>${lidar_link}</gz_frame_id>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>720</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159265359</min_angle>
+                <max_angle> 3.14159265359</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>${lidar_min}</min>
+              <max>${lidar_max}</max>
+              <resolution>0.01</resolution>
+            </range>
+            <noise>
+              <type>gaussian</type>
+              <mean>0.0</mean>
+              <stddev>0.01</stddev>
+            </noise>
+            <frame_id>${lidar_link}</frame_id>
+          </lidar>
+        </sensor>
+      </gazebo>
+    </xacro:if>
+
+    <!-- IMU -->
+    <xacro:if value="${enable_imu}">
+      <gazebo reference="${imu_link}">
+        <sensor name="imu_sensor" type="imu">
+          <always_on>1</always_on>
+          <update_rate>${imu_update}</update_rate>
+          <visualize>true</visualize>
+          <topic>${imu_topic}</topic>
+          <gz_frame_id>${imu_link}</gz_frame_id>
+          <!-- 노이즈 모델(필요시 조정) -->
+          <imu>
+            <angular_velocity>
+              <noise>
+                <type>gaussian</type>
+                <mean>0.0</mean>
+                <stddev>0.002</stddev>
+                <bias_mean>0.0</bias_mean>
+                <bias_stddev>0.0002</bias_stddev>
+              </noise>
+            </angular_velocity>
+            <linear_acceleration>
+              <noise>
+                <type>gaussian</type>
+                <mean>0.0</mean>
+                <stddev>0.05</stddev>
+                <bias_mean>0.0</bias_mean>
+                <bias_stddev>0.005</bias_stddev>
+              </noise>
+            </linear_acceleration>
+          </imu>
+        </sensor>
+      </gazebo>
+    </xacro:if>
+
+  </xacro:macro>
+
+</robot>
