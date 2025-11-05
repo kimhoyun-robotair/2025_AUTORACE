@@ -1,14 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sdf version='1.9'>
-  <model name='autorace'>
+<sdf version="1.9">
+  <model name="autorace">
     <static>true</static>
-    <pose>0 0 0.001 0 0 0</pose>
-    <link name='base'>
-      <visual name='base_visual'>
+
+    <!-- 모델 기준 포즈 -->
+    <pose>0 0 0 0 0 0</pose>
+
+    <link name="base">
+
+      <!-- 1) 텍스처가 입혀진 10m x 6m 평면 (아주 살짝 위로 띄워서 z-fighting 방지) -->
+      <visual name="base_visual_plane">
+        <!-- x y z roll pitch yaw -->
+        <pose>0 0 0.001 0 0 0</pose>
         <geometry>
           <plane>
             <normal>0 0 1</normal>
-            <size>10. 6.</size>
+            <size>10 6</size>
           </plane>
         </geometry>
         <material>
@@ -16,11 +23,53 @@
           <specular>0.4 0.4 0.4 1</specular>
           <pbr>
             <metal>
+              <!-- 텍스처 경로: 모델 URI 사용 -->
               <albedo_map>model://autorace/autorace.png</albedo_map>
             </metal>
           </pbr>
         </material>
       </visual>
+
+      <!-- 2) 동일 크기의 STL 메쉬 (두께가 있는 판) -->
+      <!--    시각용: 평면보다 약간 아래/위로 오프셋하여 z-fighting 방지 -->
+      <visual name="base_visual_mesh">
+        <pose>-5 -3 0 0 0 -1.5707</pose>
+        <geometry>
+          <mesh>
+            <uri>model://autorace/track.stl</uri>
+            <!-- STL이 '미터 단위'로 10 x 6 x 두께 로 모델링되어 있으면 1 1 1 -->
+            <!-- 만약 'mm 단위'면 0.001 0.001 0.001 로 스케일 -->
+            <scale>.001 .001 .001</scale>
+          </mesh>
+        </geometry>
+        <!-- STL은 텍스처가 안 먹으니 단색/rough 재질만 -->
+        <material>
+          <ambient>0.8 0.8 0.8 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+
+      <!-- 3) 충돌체도 STL로 (로봇과의 충돌/라인레이저 등) -->
+      <collision name="base_collision">
+        <pose>-5 -3 0 0 0 -1.5707</pose>
+        <geometry>
+          <mesh>
+            <uri>model://autorace/track.stl</uri>
+            <scale>.001 .001 .001</scale>
+          </mesh>
+        </geometry>
+        <surface>
+          <contact>
+            <collide_bitmask>0xFF</collide_bitmask>
+          </contact>
+          <bounce/>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+
     </link>
   </model>
 </sdf>
