@@ -81,15 +81,15 @@
         <steering_limit>0.4</steering_limit> <!-- rad (~28.6 deg) -->
 
         <!-- control/limits -->
-        <min_velocity>-10.0</min_velocity>
-        <max_velocity>10.0</max_velocity>
-        <min_acceleration>-10.0</min_acceleration>
-        <max_acceleration>10.0</max_acceleration>
+        <min_velocity>-3.0</min_velocity>
+        <max_velocity>3.0</max_velocity>
+        <min_acceleration>-2.0</min_acceleration>
+        <max_acceleration>2.0</max_acceleration>
 
         <!-- ROS-ish topics / odom -->
         <topic>/cmd_vel</topic>
         <odom_topic>odom</odom_topic>
-        <odom_publish_frequency>50</odom_publish_frequency>
+        <odom_publish_frequency>100</odom_publish_frequency>
         <frame_id>odom</frame_id>
         <child_frame_id>base_footprint</child_frame_id>
         <tf_topic>tf</tf_topic>
@@ -102,6 +102,8 @@
         <update_rate>150</update_rate>
         <joint_name>${fl_steer}</joint_name>
         <joint_name>${fr_steer}</joint_name>
+        <joint_name>front_left_wheel_joint</joint_name>
+        <joint_name>front_right_wheel_joint</joint_name>
         <joint_name>${rl_joint}</joint_name>
         <joint_name>${rr_joint}</joint_name>
       </plugin>

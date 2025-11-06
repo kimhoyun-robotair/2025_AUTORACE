@@ -133,7 +133,7 @@
                       cam_topic:='/camera/image'
                       cam_update:=20
                       cam_hfov:=1.05 cam_w:=640 cam_h:=480
-                      cam_near:=0.2 cam_far:=20.0
+                      cam_near:=0.2 cam_far:=15.0
 
                       lidar_link:=top_lidar_link
                       scan_topic:='/scan'
@@ -144,7 +144,7 @@
                       imu_topic:='/imu'
                       imu_update:=100">
 
-    <!-- RGB 카메라 -->
+    <!--RGB Camera-->
     <xacro:if value="${enable_camera}">
       <gazebo reference="${cam_link}">
         <sensor name="rgb_camera" type="camera">
