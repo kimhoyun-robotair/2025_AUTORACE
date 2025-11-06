@@ -3,7 +3,7 @@
 
 ## 기초적인 사용법
 ### 일단 필요한 것들
-- ROS2 Humbel
+- ROS2 Humble
 - Gazebo Harmonic
 - ros_gz 패키지 (무조건 Harmonic에 맞춰서)
 - slam-toolbox (그냥 설치만 되어있으면 됨)
