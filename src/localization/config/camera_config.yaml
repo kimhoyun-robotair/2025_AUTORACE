@@ -1,16 +1,16 @@
 camera:
   # K must correspond to /camera/image_raw resolution
-  K: [700.0, 0.0, 640.0,
-      0.0, 700.0, 360.0,
+  K: [239.37769198, 0.0, 326.07695477,
+      0.0, 239.09809565, 227.28035341,
       0.0,   0.0,   1.0]
   # set zeros if unknown
-  D: [-0.01, 0.001, 0.0, 0.0]
+  D: [-0.09486583, 0.10095213, -0.0764995, 0.0174834]
 
 bev:
-  meters_per_pixel: 0.02  # 1px = 2cm
-  output_width: 800
-  output_height: 800
+  meters_per_pixel: 0.01  # 1px = 2cm
+  output_width: 400
+  output_height: 400
   # optional:
-  # cx: 400.0
-  # cy: 400.0
+  cx: 200
+  cy: 400
 

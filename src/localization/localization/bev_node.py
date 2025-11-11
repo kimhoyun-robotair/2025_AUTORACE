@@ -31,11 +31,9 @@ class BevNode(Node):
         self.declare_parameter('camera_frame', 'camera_optical_frame')
         self.declare_parameter('bev_frame', 'bev')
         
-        # --- 추가된 부분: 지면 높이 파라미터 ---
-        # base_link 좌표계 기준, 지면의 Z좌표 (예: -0.7m)
-        self.declare_parameter('ground_z_in_base_frame', -0.7)
+        # base_link 좌표계 기준, 지면의 Z좌표 (예: -0.05m)
+        self.declare_parameter('ground_z_in_base_frame', -0.05)
         self.ground_z = self.get_parameter('ground_z_in_base_frame').get_parameter_value().double_value
-        # --- 추가 끝 ---
 
         self.config_path = self.get_parameter('config_path').get_parameter_value().string_value
         self.base_frame  = self.get_parameter('base_frame').get_parameter_value().string_value
@@ -46,7 +44,32 @@ class BevNode(Node):
             raise FileNotFoundError(f'config_path not found: {self.config_path}')
         cfg = yaml.safe_load(open(self.config_path, 'r'))
 
-        # ... (Kv, TF, IO 관련 코드는 동일) ...
+        # --- 1. 추가된 부분: YAML 파싱 ---
+        cam_cfg = cfg['camera']
+        bev_cfg = cfg['bev']
+        
+        # 카메라 파라미터 (Kc, D)
+        self.Kc = np.array(cam_cfg['K'], dtype=np.float32).reshape((3, 3))
+        self.D  = np.array(cam_cfg['D'], dtype=np.float32)
+        
+        # BEV 파라미터 (Kv, out_w, out_h)
+        self.out_w = int(bev_cfg['output_width'])
+        self.out_h = int(bev_cfg['output_height'])
+        mpp = float(bev_cfg['meters_per_pixel'])
+        cx_px = float(bev_cfg['cx']) # BEV 이미지 중심 X (픽셀)
+        cy_px = float(bev_cfg['cy']) # BEV 이미지 중심 Y (픽셀)
+
+        # 가상 BEV 카메라 행렬 Kv 생성
+        # (X_m, Y_m) -> (u_px, v_px) 매핑
+        # u = X/mpp + cx_px
+        # v = Y/mpp + cy_px
+        self.Kv = np.array([
+            [1.0/mpp, 0,       cx_px],
+            [0,       1.0/mpp, cy_px],
+            [0,       0,       1]
+        ], dtype=np.float32)
+        # --- 1. 추가 끝 ---
+
         # IO
         qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                          history=HistoryPolicy.KEEP_LAST, depth=5)
@@ -58,7 +81,13 @@ class BevNode(Node):
         self.map1 = self.map2 = None
         self.input_size = None
         self.H = None
+        
+        # --- 2. 추가/수정된 부분: TF 버퍼 (타이머보다 먼저 선언!) ---
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        
         self.timer = self.create_timer(0.2, self.try_build_H_once)
+        # --- 2. 수정 끝 ---
 
 
     def lookup(self, target_frame, source_frame, stamp: Time=None):
@@ -95,7 +124,6 @@ class BevNode(Node):
         r1_V = R_VB[:, [0]]
         r2_V = R_VB[:, [1]]
         r3_V = R_VB[:, [2]]
-        # (참고: bev_frame이 base_link와 Z축이 같다면 r3_V는 [0,0,k] 형태일 것임)
         H_g2b = self.Kv @ np.concatenate([r1_V, r2_V, t_VB + h * r3_V], axis=1)
 
         # 5. 최종 H = H_g2b * (H_g2i)^-1 계산
@@ -109,17 +137,12 @@ class BevNode(Node):
         self.get_logger().info(f'H initialized (Ground Z={h:.3f}m):\n{self.H}')
         self.timer.cancel()
 
-    # ... (ensure_undistort_maps, image_cb, main 함수는 동일) ...
     def ensure_undistort_maps(self, w, h):
         if self.input_size == (w, h) and (self.map1 is not None or not np.any(self.D)):
             return
         self.input_size = (w, h)
         if np.any(np.abs(self.D) > 1e-12):
-            # self.get_logger().info('Using cv2.initUndistortRectifyMap (standard lens model)')
-            # self.map1, self.map2 = cv2.initUndistortRectifyMap(
-            #     self.Kc, self.D, np.eye(3), self.Kc, (w, h), cv2.CV_16SC2
-            # )
-            # 만약 fisheye 모델을 사용해야 한다면, 아래 코드를 대신 사용하세요.
+            # (주석 해제됨) Fisheye 모델 사용
             self.get_logger().info('Using cv2.fisheye.initUndistortRectifyMap (fisheye lens model)')
             self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(
                 self.Kc, self.D, np.eye(3), self.Kc, (w, h), cv2.CV_16SC2
@@ -141,6 +164,7 @@ class BevNode(Node):
         if self.map1 is not None:
             img = cv2.remap(img, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
 
+        # H, out_w, out_h 모두 __init__에서 정상적으로 초기화됨
         bev = cv2.warpPerspective(img, self.H, (self.out_w, self.out_h), flags=cv2.INTER_LINEAR)
         out = self.bridge.cv2_to_imgmsg(bev, encoding='bgr8')
         out.header.stamp = msg.header.stamp
