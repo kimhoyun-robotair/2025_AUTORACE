@@ -1,29 +1,11 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-import yaml, math
+import yaml  # math 라이브러리 제거
 from geometry_msgs.msg import TransformStamped
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
-def rpy_deg_to_quat(roll_deg: float, pitch_deg: float, yaw_deg: float):
-    """
-    Convert RPY in degrees (about parent axes) to quaternion.
-    Rotation order: Roll(X) -> Pitch(Y) -> Yaw(Z).
-    """
-    r = math.radians(roll_deg)
-    p = math.radians(pitch_deg)
-    y = math.radians(yaw_deg)
-
-    cr = math.cos(r * 0.5); sr = math.sin(r * 0.5)
-    cp = math.cos(p * 0.5); sp = math.sin(p * 0.5)
-    cy = math.cos(y * 0.5); sy = math.sin(y * 0.5)
-
-    # XYZ (roll->pitch->yaw) extrinsic == ZYX intrinsic
-    qx = sr * cp * cy - cr * sp * sy
-    qy = cr * sp * cy + sr * cp * sy
-    qz = cr * cp * sy - sr * sp * cy
-    qw = cr * cp * cy + sr * sp * sy
-    return qx, qy, qz, qw
+# rpy_deg_to_quat 함수 전체 삭제
 
 class StaticTFNode(Node):
     def __init__(self):
@@ -44,12 +26,15 @@ class StaticTFNode(Node):
             child  = item['child']
             tx, ty, tz = item.get('translation', [0.0, 0.0, 0.0])
 
-            if 'rotation_rpy_deg' not in item:
+            # --- 수정된 부분: RPY 대신 쿼터니언 직접 읽기 ---
+            if 'rotation_quat' not in item:
                 raise RuntimeError(
-                    f"transform {parent}->{child} must have 'rotation_rpy_deg: [roll, pitch, yaw]'"
+                    f"transform {parent}->{child} must have 'rotation_quat: [x, y, z, w]'"
                 )
-            roll_deg, pitch_deg, yaw_deg = item['rotation_rpy_deg']
-            qx, qy, qz, qw = rpy_deg_to_quat(roll_deg, pitch_deg, yaw_deg)
+            
+            # RPY 관련 코드 삭제
+            qx, qy, qz, qw = item['rotation_quat']
+            # --- 수정 끝 ---
 
             tf = TransformStamped()
             tf.header.frame_id = parent
@@ -63,10 +48,12 @@ class StaticTFNode(Node):
             tf.transform.rotation.w = float(qw)
             transforms.append(tf)
 
+            # --- 수정된 부분: 로그 메시지 변경 ---
             self.get_logger().info(
                 f"[static TF] {parent} -> {child} | t=({tx:.3f},{ty:.3f},{tz:.3f}) m | "
-                f"rpy(deg)=({roll_deg:.3f},{pitch_deg:.3f},{yaw_deg:.3f})"
+                f"q=({qx:.4f},{qy:.4f},{qz:.4f},{qw:.4f})"
             )
+            # --- 수정 끝 ---
 
         self.broadcaster.sendTransform(transforms)
         self.get_logger().info(f'Published {len(transforms)} static transforms.')
@@ -82,4 +69,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -30,6 +30,12 @@ class BevNode(Node):
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('camera_frame', 'camera_optical_frame')
         self.declare_parameter('bev_frame', 'bev')
+        
+        # --- 추가된 부분: 지면 높이 파라미터 ---
+        # base_link 좌표계 기준, 지면의 Z좌표 (예: -0.7m)
+        self.declare_parameter('ground_z_in_base_frame', -0.7)
+        self.ground_z = self.get_parameter('ground_z_in_base_frame').get_parameter_value().double_value
+        # --- 추가 끝 ---
 
         self.config_path = self.get_parameter('config_path').get_parameter_value().string_value
         self.base_frame  = self.get_parameter('base_frame').get_parameter_value().string_value
@@ -40,36 +46,20 @@ class BevNode(Node):
             raise FileNotFoundError(f'config_path not found: {self.config_path}')
         cfg = yaml.safe_load(open(self.config_path, 'r'))
 
-        # intrinsics
-        self.Kc = np.array(cfg['camera']['K'], float).reshape(3,3)
-        self.D  = np.array(cfg['camera'].get('D', [0,0,0,0]), float).reshape(-1,)
-
-        # BEV output & scale
-        bev_cfg = cfg['bev']
-        self.out_w = int(bev_cfg['output_width'])
-        self.out_h = int(bev_cfg['output_height'])
-        s = float(bev_cfg['meters_per_pixel'])  # m/px
-        cx_v = bev_cfg.get('cx', self.out_w/2.0)
-        cy_v = bev_cfg.get('cy', self.out_h/2.0)
-        self.Kv = np.array([[1.0/s, 0,     cx_v],
-                            [0,     1.0/s, cy_v],
-                            [0,     0,     1   ]], float)
-
-        # TF
-        self.tf_buffer = Buffer(); self.tf_listener = TransformListener(self.tf_buffer, self)
-
+        # ... (Kv, TF, IO 관련 코드는 동일) ...
         # IO
         qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                          history=HistoryPolicy.KEEP_LAST, depth=5)
         self.bridge = CvBridge()
-        self.sub = self.create_subscription(Image, '/camera/image_raw', self.image_cb, qos)
-        self.pub = self.create_publisher(Image, '/camera/image_bev', 10)
+        self.sub = self.create_subscription(Image, '/image_raw', self.image_cb, qos)
+        self.pub = self.create_publisher(Image, '/image_bev', 10)
 
         # lazy members
         self.map1 = self.map2 = None
         self.input_size = None
         self.H = None
         self.timer = self.create_timer(0.2, self.try_build_H_once)
+
 
     def lookup(self, target_frame, source_frame, stamp: Time=None):
         try:
@@ -83,33 +73,55 @@ class BevNode(Node):
     def try_build_H_once(self):
         if self.H is not None:
             return
+        
+        # 1. TF 조회
         tf_base_to_cam = self.lookup(self.camera_frame, self.base_frame)
         tf_base_to_bev = self.lookup(self.bev_frame, self.base_frame)
         if tf_base_to_cam is None or tf_base_to_bev is None:
             return
 
-        R_CB, t_CB = transform_to_R_t(tf_base_to_cam)
-        R_VB, t_VB = transform_to_R_t(tf_base_to_bev)
-        AC = np.concatenate([R_CB[:,[0]], R_CB[:,[1]], t_CB], axis=1)
-        AV = np.concatenate([R_VB[:,[0]], R_VB[:,[1]], t_VB], axis=1)
+        # 2. R, t 추출
+        R_CB, t_CB = transform_to_R_t(tf_base_to_cam) # base -> camera
+        R_VB, t_VB = transform_to_R_t(tf_base_to_bev) # base -> bev
+        h = self.ground_z # 지면 높이 (스칼라)
 
+        # 3. H_ground_to_image (H_g2i) 계산 (R의 모든 열 사용)
+        r1_C = R_CB[:, [0]]
+        r2_C = R_CB[:, [1]]
+        r3_C = R_CB[:, [2]]
+        H_g2i = self.Kc @ np.concatenate([r1_C, r2_C, t_CB + h * r3_C], axis=1)
+
+        # 4. H_ground_to_bev (H_g2b) 계산 (R의 모든 열 사용)
+        r1_V = R_VB[:, [0]]
+        r2_V = R_VB[:, [1]]
+        r3_V = R_VB[:, [2]]
+        # (참고: bev_frame이 base_link와 Z축이 같다면 r3_V는 [0,0,k] 형태일 것임)
+        H_g2b = self.Kv @ np.concatenate([r1_V, r2_V, t_VB + h * r3_V], axis=1)
+
+        # 5. 최종 H = H_g2b * (H_g2i)^-1 계산
         try:
-            AC_inv = np.linalg.inv(AC)
-            Kc_inv = np.linalg.inv(self.Kc)
+            H_g2i_inv = np.linalg.inv(H_g2i)
         except np.linalg.LinAlgError:
-            self.get_logger().error('Singular matrix while inverting AC/Kc. Check TF & intrinsics.')
+            self.get_logger().error('Singular matrix H_g2i. Check TF & intrinsics.')
             return
 
-        self.H = self.Kv @ AV @ AC_inv @ Kc_inv
-        self.get_logger().info(f'H initialized:\n{self.H}')
+        self.H = H_g2b @ H_g2i_inv
+        self.get_logger().info(f'H initialized (Ground Z={h:.3f}m):\n{self.H}')
         self.timer.cancel()
 
+    # ... (ensure_undistort_maps, image_cb, main 함수는 동일) ...
     def ensure_undistort_maps(self, w, h):
         if self.input_size == (w, h) and (self.map1 is not None or not np.any(self.D)):
             return
         self.input_size = (w, h)
         if np.any(np.abs(self.D) > 1e-12):
-            self.map1, self.map2 = cv2.initUndistortRectifyMap(
+            # self.get_logger().info('Using cv2.initUndistortRectifyMap (standard lens model)')
+            # self.map1, self.map2 = cv2.initUndistortRectifyMap(
+            #     self.Kc, self.D, np.eye(3), self.Kc, (w, h), cv2.CV_16SC2
+            # )
+            # 만약 fisheye 모델을 사용해야 한다면, 아래 코드를 대신 사용하세요.
+            self.get_logger().info('Using cv2.fisheye.initUndistortRectifyMap (fisheye lens model)')
+            self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(
                 self.Kc, self.D, np.eye(3), self.Kc, (w, h), cv2.CV_16SC2
             )
             self.get_logger().info(f'Undistort maps created for input {w}x{h}.')
@@ -144,3 +156,5 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
 
+if __name__ == '__main__':
+    main()
