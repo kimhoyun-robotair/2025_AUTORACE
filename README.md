@@ -24,3 +24,24 @@ $ ros2 launch autorace_sim spawn_robot.launch.py
 
 ### 문의사항
 - 안될 경우 `suberkut76@gmail.com` 혹은 카톡방, Github Issue 등으로 문의할 것
+
+
+###
+###
+## 여기부터 임준형 영역 Localization
+전체 구조는 다음과 같다.
+- bev_node
+  - 입력 : /image_raw
+  - 출력 : /image_bev
+- static_tf_node
+  - 입력 : camera_config.yaml, tf_config.yaml
+  - 출력 : base_link -> camera, base_link -> BEV (Bird's Eye View)
+- edge_node
+  - 입력 : /image_bev
+  - 출력 : /edge_cloud, /lane_width_hint
+- mcl_matcher_node
+  - 입력 : /edge_cloud, /lane_width_hint, /imu
+  - 출력 : /odom_camera (Odometry Nav message)
+- EKF_fuser
+  - 입력 : /odom_camera, /imu
+  - 출력 : /tf, /odom (map -> odom, odom -> base_link Odometry Nav message)
