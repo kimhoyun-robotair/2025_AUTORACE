@@ -8,6 +8,17 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(ackermann_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+
+add_executable(ackermann_to_twist_converter_node src/ackermann_to_cmd_vel.cpp)
+ament_target_dependencies(ackermann_to_twist_converter_node rclcpp ackermann_msgs geometry_msgs)
+
+install(TARGETS
+  ackermann_to_twist_converter_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(DIRECTORY
   config
@@ -18,6 +29,15 @@ install(DIRECTORY
   meshes
   demomap
   DESTINATION share/${PROJECT_NAME}
+)
+
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME})
+
+# Install Python executables
+install(PROGRAMS
+  scripts/moving_car.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

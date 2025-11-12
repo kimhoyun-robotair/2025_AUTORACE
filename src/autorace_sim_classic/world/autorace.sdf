@@ -405,5 +405,40 @@
         <kinematic>0</kinematic>
       </link>
     </model>
+    <model name="moving_box">
+      <pose>3.5 0 0.0 0 0 -1.7</pose>
+      <link name="link">
+        <collision name= "collision">
+          <geometry>
+            <box>
+              <size>.3 .2 .15</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>.3 .2 .15</size>
+            </box>
+          </geometry>
+        </visual>
+      </link>
+      <plugin name='planar_move' filename='libgazebo_ros_planar_move.so'>
+        <ros>
+          <namespace>demo</namespace>
+          <remapping>cmd_vel:=box_cmd_demo</remapping>
+          <remapping>odom:=box_odom_demo</remapping>
+        </ros>
+      </plugin>
+    </model>
+    <!-- left, right marker -->
+    <include>
+      <uri>model://left_marker</uri>
+      <pose>0 2.3 0.7 1.5707 0 0</pose>
+    </include>
+    <!--include>
+      <uri>model://right_marker</uri>
+      <pose>0 2.3 0.7 1.5707 0 0</pose>
+    </include-->
   </world>
 </sdf>

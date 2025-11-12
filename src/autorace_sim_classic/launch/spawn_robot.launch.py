@@ -12,7 +12,7 @@ def generate_launch_description():
     # model path and world, config path
     default_model_path = os.path.join(pkg_share, 'robot_description/autorace.urdf')
     # default_rviz_config_path = os.path.join(pkg_share, 'rviz/urdf_config.rviz')
-    world_path=os.path.join(pkg_share, 'world/demomap/model.sdf')
+    world_path=os.path.join(pkg_share, 'world/autorace.sdf')
     # use sim time or not?
     use_sim_time = LaunchConfiguration('use_sim_time')
 
