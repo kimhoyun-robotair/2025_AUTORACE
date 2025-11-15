@@ -17,7 +17,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  scripts/lidar_detection.py
+  scripts/car_detector.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

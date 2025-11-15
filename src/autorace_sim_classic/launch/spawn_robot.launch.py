@@ -12,7 +12,7 @@ def generate_launch_description():
     # model path and world, config path
     default_model_path = os.path.join(pkg_share, 'robot_description/autorace.urdf')
     # default_rviz_config_path = os.path.join(pkg_share, 'rviz/urdf_config.rviz')
-    world_path=os.path.join(pkg_share, 'world/autorace.sdf')
+    world_path=os.path.join(pkg_share, 'world/2025autorace_full.sdf')
     # use sim time or not?
     use_sim_time = LaunchConfiguration('use_sim_time')
 
@@ -62,15 +62,13 @@ def generate_launch_description():
         arguments=['-entity', 'racecar', '-x', str(position[0]), '-y', str(position[1]), '-z', str(position[2]), '-R', str(orientation[0]), '-P', str(orientation[1]), '-Y', str(orientation[2]),'-topic', '/robot_description'],
         output='screen'
     )
-    
-    '''
+
     ackermann_to_twist_converter_node = Node(
-        package='f1_robot_model',
+        package='autorace_sim_classic',
         executable='ackermann_to_twist_converter_node',
         name='ackermann_to_twist_converter_node',
         output='screen'
     )
-    '''
 
     return launch.LaunchDescription([
 
@@ -84,5 +82,5 @@ def generate_launch_description():
         robot_state_publisher_node,
         spawn_entity,
         # rviz_node,
-        # ackermann_to_twist_converter_node,
+        ackermann_to_twist_converter_node,
     ])

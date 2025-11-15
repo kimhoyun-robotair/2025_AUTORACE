@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <model name="tunnel">
+    <static>true</static>
+
+    <!-- 왼쪽 기둥 -->
+    <link name="pillar_left">
+      <pose>-0.27 0 0.3 0 0 0</pose>
+      <collision name="col">
+        <geometry><box><size>0.05 2.0 0.6</size></box></geometry>
+      </collision>
+      <visual name="vis">
+        <geometry><box><size>0.05 2.0 0.6</size></box></geometry>
+        <material><ambient>0 0 0 1</ambient><diffuse>0 0 0 1</diffuse></material>
+      </visual>
+    </link>
+
+    <!-- 오른쪽 기둥 -->
+    <link name="pillar_right">
+      <pose>0.27 0 0.3 0 0 0</pose>
+      <collision name="col">
+        <geometry><box><size>0.05 2.0 0.6</size></box></geometry>
+      </collision>
+      <visual name="vis">
+        <geometry><box><size>0.05 2.0 0.6</size></box></geometry>
+        <material><ambient>0 0 0 1</ambient><diffuse>0 0 0 1</diffuse></material>
+      </visual>
+    </link>
+
+    <!-- 상부 보 -->
+    <link name="beam_top">
+      <pose>0 0 0.61 0 0 0</pose>
+      <collision name="col">
+        <geometry><box><size>0.54 2.0 0.05</size></box></geometry>
+      </collision>
+      <visual name="vis">
+        <geometry><box><size>0.54 2.0 0.05</size></box></geometry>
+        <material><ambient>0 0 0 1</ambient><diffuse>0 0 0 1</diffuse></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

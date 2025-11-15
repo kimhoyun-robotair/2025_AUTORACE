@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sdf version="1.7">
-  <model name="autorace">
+  <model name="2024autorace">
     <static>true</static>
     <pose>0 0 0 0 0 0</pose>
 
@@ -18,10 +18,10 @@
         <material>
           <script>
             <!-- 스크립트/텍스처 경로 등록 -->
-            <uri>model://autorace/materials/scripts</uri>
-            <uri>model://autorace/materials/textures</uri>
+            <uri>model://2024autorace/materials/scripts</uri>
+            <uri>model://2024autorace/materials/textures</uri>
             <!-- ★ 스크립트에 정의한 이름과 동일해야 함 -->
-            <name>Autorace/Albedo</name>
+            <name>2024Autorace/Albedo</name>
           </script>
           <!-- 아래 색상들은 스크립트가 대체하므로 굳이 필요 없음 (남겨도 무방) -->
           <ambient>1 1 1 1</ambient>

@@ -37,6 +37,7 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/moving_car.py
+  scripts/moving_cross.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

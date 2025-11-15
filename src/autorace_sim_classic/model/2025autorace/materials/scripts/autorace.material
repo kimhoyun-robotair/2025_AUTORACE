@@ -1,4 +1,4 @@
-material Autorace/Albedo
+material 2025Autorace/Albedo
 {
   receive_shadows on
   technique
@@ -15,7 +15,7 @@ material Autorace/Albedo
 
       texture_unit
       {
-        texture autorace.png
+        texture 2025autorace.png
         tex_address_mode wrap
         filtering trilinear
       }
