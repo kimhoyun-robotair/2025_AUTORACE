@@ -18,6 +18,7 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/car_detector.py
+  scripts/cross_detector.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -106,8 +106,8 @@ class RectStopGoNode(Node):
         self.declare_parameter('length_max', 3.5)                   # [m] 긴 변 최대
 
         # 라이다 FOV 제한
-        self.declare_parameter('fov_min_deg', -30.0)   # [deg] 하한각
-        self.declare_parameter('fov_max_deg',  30.0)   # [deg] 상한각
+        self.declare_parameter('fov_min_deg', -10.0)   # [deg] 하한각
+        self.declare_parameter('fov_max_deg',  10.0)   # [deg] 상한각
 
         # ------------------- 파라미터 해석/저장 -------------------
         gp = lambda n: self.get_parameter(n).value
@@ -488,7 +488,7 @@ class RectStopGoNode(Node):
             arr.markers.append(self.mk_front_edge(frame_id, stamp, 3, x_min, y_min, y_max, rgba(1.0, 1.0, 0.2, 0.9), 0.04))
 
             cx, cy = np.mean(box[:, 0]), np.mean(box[:, 1])
-            arr.markers.append(self.mk_center(frame_id, stamp, 4, cx, cy, rgba(1.0, 0.6, 0.0, 0.9), 0.08))
+            arr.markers.append(self.mk_center(frame_id, stamp, 4, float(cx), float(cy), rgba(1.0, 0.6, 0.0, 0.9), 0.08))
 
         # (4) 텍스트(거리/상태)
         color = rgba(0.2, 1.0, 0.2, 0.9) if clear else rgba(1.0, 0.2, 0.2, 0.9)
