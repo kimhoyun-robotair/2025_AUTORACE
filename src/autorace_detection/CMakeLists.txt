@@ -19,6 +19,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/car_detector.py
   scripts/cross_detector.py
+  scripts/stop_line_detector.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

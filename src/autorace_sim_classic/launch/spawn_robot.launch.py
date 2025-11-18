@@ -70,6 +70,22 @@ def generate_launch_description():
         output='screen'
     )
 
+    repub_node = Node(
+        package='image_transport',
+        executable='republish',
+        name='image_raw_to_compressed',
+        output='screen',
+        # Usage: republish in_transport in:=<in_base> [out_transport] out:=<out_base>
+        arguments=[
+            'raw',        # in_transport
+            'compressed', # out_transport
+        ],
+        remappings=[
+            ('in',  '/camera/image_raw'),  # 입력 Image 토픽 base
+            ('out', '/camera/image_raw'),  # 출력 base (→ /camera/image_raw/compressed)
+        ],
+    )
+
     return launch.LaunchDescription([
 
         launch.actions.DeclareLaunchArgument(name='model', default_value=default_model_path,
@@ -83,4 +99,5 @@ def generate_launch_description():
         spawn_entity,
         # rviz_node,
         ackermann_to_twist_converter_node,
+        repub_node,
     ])
