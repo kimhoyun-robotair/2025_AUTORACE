@@ -38,6 +38,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/moving_car.py
   scripts/moving_cross.py
+  scripts/yolo_dataset_save.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -64,8 +64,8 @@
     </scene>
 
     <!-- 이동 박스 -->
-    <model name="moving_box">
-      <pose>-2.0 -0.3 0.0 0 0 -1.7</pose>
+    <model name="moving_box_0">
+      <pose>-1.9708008938042767 0.24679712305567214 0.0 0 0 3.7707963267948967</pose>
       <inertial>
         <mass>2.0</mass>
         <inertia>
@@ -81,11 +81,11 @@
           <geometry><box><size>0.3 0.2 0.3</size></box></geometry>
         </visual>
       </link>
-      <plugin name="planar_move" filename="libgazebo_ros_planar_move.so">
+      <plugin name="planar_move_0" filename="libgazebo_ros_planar_move.so">
         <ros>
           <namespace>demo</namespace>
-          <remapping>cmd_vel:=box_cmd_demo</remapping>
-          <remapping>odom:=box_odom_demo</remapping>
+          <remapping>cmd_vel:=box0_cmd_demo</remapping>
+          <remapping>odom:=box0_odom_demo</remapping>
         </ros>
       </plugin>
     </model>
@@ -170,27 +170,255 @@
     </include-->
 
     <include>
-      <uri>model://labacorn</uri>
-      <name>labacorn_0</name>
-      <pose>4.85 1.8 0 0 0 0</pose>
+      <uri>model://construction_cone</uri>
+      <name>cone_first</name>
+      <pose>3.7 2.85 0 0 0 0</pose>
     </include>
 
     <include>
-      <uri>model://labacorn</uri>
-      <name>labacorn_1</name>
-      <pose>4.2 0.9 0 0 0 0</pose>
+      <uri>model://construction_cone</uri>
+      <name>cone_0</name>
+      <pose>3.9 2.85 0 0 0 0</pose>
     </include>
 
     <include>
-      <uri>model://labacorn</uri>
-      <name>labacorn_2</name>
-      <pose>-4.85 -1.8 0 0 0 0</pose>
+      <uri>model://construction_cone</uri>
+      <name>cone_2</name>
+      <pose>4.1 2.75 0 0 0 0</pose>
     </include>
 
     <include>
-      <uri>model://labacorn</uri>
-      <name>labacorn_3</name>
-      <pose>-4.2 -0.9 0 0 0 0</pose>
+      <uri>model://construction_cone</uri>
+      <name>cone_4</name>
+      <pose>4.3 2.67 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_6</name>
+      <pose>4.5 2.55 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_8</name>
+      <pose>4.7 2.45 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_9</name>
+      <pose>4.75 2.2 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_10</name>
+      <pose>4.82 1.95 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_11</name>
+      <pose>4.82 1.72 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_16</name>
+      <pose>4.8 1.59 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_17</name>
+      <pose>4.78 1.41 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_18</name>
+      <pose>4.7 1.17 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_19</name>
+      <pose>4.6 0.97 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_20</name>
+      <pose>4.38 0.78 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_21</name>
+      <pose>3.7 2.2 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_22</name>
+      <pose>3.9 2.15 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_23</name>
+      <pose>4.1 2.0 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_24</name>
+      <pose>4.2 1.8 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_25</name>
+      <pose>4.2 1.59 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_26</name>
+      <pose>4.05 1.4 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_27</name>
+      <pose>3.85 1.25 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_28</name>
+      <pose>-3.7 -2.85 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_29</name>
+      <pose>-3.9 -2.85 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_30</name>
+      <pose>-4.1 -2.75 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_31</name>
+      <pose>-4.3 -2.67 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_32</name>
+      <pose>-4.5 -2.55 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_33</name>
+      <pose>-4.7 -2.45 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_34</name>
+      <pose>-4.75 -2.2 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_35</name>
+      <pose>-4.82 -1.95 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_36</name>
+      <pose>-4.82 -1.72 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_37</name>
+      <pose>-4.8 -1.59 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_38</name>
+      <pose>-4.78 -1.41 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_39</name>
+      <pose>-4.7 -1.17 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_40</name>
+      <pose>-4.6 -0.97 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_41</name>
+      <pose>-4.38 -0.78 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_42</name>
+      <pose>-3.7 -2.2 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_43</name>
+      <pose>-3.9 -2.15 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_44</name>
+      <pose>-4.1 -2.0 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_45</name>
+      <pose>-4.2 -1.8 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_46</name>
+      <pose>-4.2 -1.59 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_47</name>
+      <pose>-4.05 -1.4 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://construction_cone</uri>
+      <name>cone_48</name>
+      <pose>-3.85 -1.25 0 0 0 0</pose>
     </include>
 
     <!-- GUI 카메라 -->
