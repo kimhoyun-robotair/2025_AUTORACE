@@ -26,7 +26,8 @@ def generate_launch_description():
             parameters=[{
                 'config_path': cam_yaml,
                 'base_frame': 'base_link',
-                'camera_frame': 'camera_optical_frame',
+                #'camera_frame': 'camera_optical_frame',
+                'camera_frame': 'left_camera_link_optical',
                 'bev_frame': 'bev',
             }],
         ),

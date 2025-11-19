@@ -32,7 +32,8 @@ class BevNode(Node):
         self.declare_parameter('bev_frame', 'bev')
         
         # base_link 좌표계 기준, 지면의 Z좌표 (예: -0.05m)
-        self.declare_parameter('ground_z_in_base_frame', -0.05)
+        #self.declare_parameter('ground_z_in_base_frame', -0.05)
+        self.declare_parameter('ground_z_in_base_frame', 0.00)
         self.ground_z = self.get_parameter('ground_z_in_base_frame').get_parameter_value().double_value
 
         self.config_path = self.get_parameter('config_path').get_parameter_value().string_value
@@ -74,7 +75,7 @@ class BevNode(Node):
         qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                          history=HistoryPolicy.KEEP_LAST, depth=5)
         self.bridge = CvBridge()
-        self.sub = self.create_subscription(Image, '/image_raw', self.image_cb, qos)
+        self.sub = self.create_subscription(Image, '/camera/image_raw', self.image_cb, qos)
         self.pub = self.create_publisher(Image, '/image_bev', 10)
 
         # lazy members
