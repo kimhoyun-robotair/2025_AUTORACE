@@ -1,6 +1,6 @@
 /razor_node:
   ros__parameters:
-    port: /dev/ttyUSB0
+    port: /dev/ttyACM0
     topic: imu
     frame_id: base_imu_link
     
