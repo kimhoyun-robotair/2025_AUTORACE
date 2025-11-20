@@ -28,6 +28,7 @@ install(DIRECTORY
   world
   meshes
   demomap
+  weight
   DESTINATION share/${PROJECT_NAME}
 )
 
