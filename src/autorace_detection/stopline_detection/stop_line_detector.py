@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+'''
+HSV 색상 기준으로 흰색 정지선 및 횡단보도를 탐지하는 코드
+'''
 
 import rclpy
 from rclpy.node import Node
@@ -15,24 +17,13 @@ class WhiteLaneDetector(Node):
     def __init__(self):
         super().__init__('white_lane_detector')
 
-        # ---- 파라미터 선언 (ROS2 parameter) ----
-        # 현재 값은 사실상 "노란색" 범위에 맞춰 둔 상태
-        self.declare_parameter('hue_white_l', 15)
-        self.declare_parameter('hue_white_h', 40)
-        self.declare_parameter('saturation_white_l', 70)
-        self.declare_parameter('saturation_white_h', 255)
-        self.declare_parameter('lightness_white_l', 80)
-        self.declare_parameter('lightness_white_h', 255)
-
-        # 이건 흰색 정지선 탐지
-        '''
+        # 이건 흰색 정지선 및 횡단보도 탐지
         self.declare_parameter('hue_white_l', 0)
         self.declare_parameter('hue_white_h', 179)
         self.declare_parameter('saturation_white_l', 0)
         self.declare_parameter('saturation_white_h', 70)
         self.declare_parameter('lightness_white_l', 105)
         self.declare_parameter('lightness_white_h', 255)
-        '''
 
         # 파라미터 값 읽기
         self.update_params_from_server()
@@ -52,17 +43,12 @@ class WhiteLaneDetector(Node):
         )
 
         self.counter = 0
-
-        # 슬라이딩 윈도우에서 이전 피팅 계수 저장용 (지금은 시각화엔 안 씀)
         self.last_lane_fit = None
-
         self.add_on_set_parameters_callback(self.on_param_change)
-
         self.get_logger().info('WhiteLaneDetector initialized, subscribing to /image_bev')
 
-    # ----------------- Parameter Handling -----------------
-
     def update_params_from_server(self):
+        ''' 파라미터 값 읽어오기 '''
         self.hue_white_l = self.get_parameter('hue_white_l').value
         self.hue_white_h = self.get_parameter('hue_white_h').value
         self.saturation_white_l = self.get_parameter('saturation_white_l').value
@@ -71,6 +57,7 @@ class WhiteLaneDetector(Node):
         self.lightness_white_h = self.get_parameter('lightness_white_h').value
 
     def on_param_change(self, params):
+        ''' 파라미터 값 변경 콜백 함수 '''
         for p in params:
             if p.name in [
                 'hue_white_l', 'hue_white_h',

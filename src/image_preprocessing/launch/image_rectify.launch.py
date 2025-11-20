@@ -5,21 +5,21 @@ from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import PathJoinSubstitution
 
 def generate_launch_description():
-    pkg_share = FindPackageShare('image_rectify')
+    pkg_share = FindPackageShare('image_preprocessing')
 
     tf_yaml = PathJoinSubstitution([pkg_share, 'config', 'tf_config.yaml'])
     cam_yaml = PathJoinSubstitution([pkg_share, 'config', 'camera_config.yaml'])
 
     return LaunchDescription([
         Node(
-            package='image_rectify',
+            package='image_preprocessing',
             executable='static_tf_node.py',
             name='static_tf_node',
             output='screen',
             parameters=[{'tf_config_path': tf_yaml}],
         ),
         Node(
-            package='image_rectify',
+            package='image_preprocessing',
             executable='bev_node.py',
             name='bev_node',
             output='screen',

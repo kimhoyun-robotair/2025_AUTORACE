@@ -16,7 +16,7 @@
   <mu2 value="1.0"/>
   <kp  value="10000000.0" />
   <kd  value="1.0" />
-  <fdir1 value="1 0 0"/>
+  <fdir1 value="0 0 1"/>
   <material>Gazebo/Black</material>
 </gazebo>
 
@@ -25,7 +25,7 @@
   <mu2 value="1.0"/>
   <kp  value="10000000.0" />
   <kd  value="1.0" />
-  <fdir1 value="1 0 0"/>
+  <fdir1 value="0 0 1"/>
   <material>Gazebo/Black</material>
 </gazebo>
 
@@ -136,13 +136,15 @@
 
       <!-- Max absolute steer angle for tyre in radians-->
       <!-- Any cmd_vel angular z greater than this would be capped -->
-      <max_steer>1.01</max_steer>
+      <max_steer>0.57</max_steer>
 
       <!-- Max absolute steering angle of steering wheel -->
       <max_steering_angle>6.85</max_steering_angle>
 
       <!-- Max absolute linear speed in m/s -->
-      <max_speed>20</max_speed>
+      <max_speed>3</max_speed>
+      <!-- Timeout for cmd_vel commands -->
+      <cmd_vel_timeout>0.5</cmd_vel_timeout>
 
       <!-- PID tuning -->
       <left_steering_pid_gain>10 0 0</left_steering_pid_gain>
