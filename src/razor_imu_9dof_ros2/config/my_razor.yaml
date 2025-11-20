@@ -1,23 +1,23 @@
 /razor_node:
   ros__parameters:
-    port: /dev/ttyUSB0
+    port: /dev/ttyACM0
     topic: imu
     frame_id: base_imu_link
     
     # Calibration
     accel_x_min: -250.0
     accel_x_max: 250.0
-    accel_y_min: -250.0
-    accel_y_max: 250.0
-    accel_z_min: -250.0
-    accel_z_max: 250.0
+    accel_y_min: -253.0
+    accel_y_max: 253.0
+    accel_z_min: -117.0
+    accel_z_max: 377.0
     
-    magn_x_min: -600.0
-    magn_x_max: 600.0
-    magn_y_min: -600.0
-    magn_y_max: 600.0
-    magn_z_min: -600.0
-    magn_z_max: 600.0
+    magn_x_min: 106.53
+    magn_x_max: 1498.87
+    magn_y_min: -262.57
+    magn_y_max: 918.23
+    magn_z_min: -531.13
+    magn_z_max: 655.66
     
     calibration_magn_use_extended: false
     magn_ellipsoid_center: [0.0, 0.0, 0.0]
@@ -26,6 +26,6 @@
     
     imu_yaw_calibration: 0.0
     
-    gyro_average_offset_x: 0.0
-    gyro_average_offset_y: 0.0
-    gyro_average_offset_z: 0.0
+    gyro_average_offset_x: 0.02
+    gyro_average_offset_y: -0.14
+    gyro_average_offset_z: -0.02
