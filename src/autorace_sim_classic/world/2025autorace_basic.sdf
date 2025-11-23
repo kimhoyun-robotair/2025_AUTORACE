@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <world name="2024autorace_basic">
+
+    <!-- Light -->
+    <light name="sun" type="directional">
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground plane (정상 정의) -->
+    <model name="ground_plane">
+      <static>1</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction><ode><mu>100</mu><mu2>50</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <cast_shadows>0</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Grey</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 물리/씬 -->
+    <gravity>0 0 -9.8</gravity>
+    <physics type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>1</shadows>
+    </scene>
+
+    <!-- 트랙 바닥 텍스처 모델 -->
+    <include>
+      <uri>model://2025autorace</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+
+    <!-- 트랙을 둘러싸는 벽들 -->
+    <include>
+      <uri>model://wall_10m</uri>
+      <name>wall_10m_left</name>
+      <pose>0 3 0.15 0 0 0 </pose>
+    </include>
+
+    <include>
+      <uri>model://wall_10m</uri>
+      <name>wall_10m_right</name>
+      <pose>0 -3 0.15 0 0 0 </pose>
+    </include>
+
+    <include>
+      <uri>model://wall_6m</uri>
+      <name>wall_6m_right</name>
+      <pose>5 0 0.15 0 0 1.5707</pose>
+    </include>
+
+    <include>
+      <uri>model://wall_6m</uri>
+      <name>wall_6m_left</name>
+      <pose>-5 0 0.15 0 0 1.5707</pose>
+    </include>
+
+    <!-- GUI 카메라 -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>-13 -12 5 0 0.1 0.57</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
+  </world>
+</sdf>

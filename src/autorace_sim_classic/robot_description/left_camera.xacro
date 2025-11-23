@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" >
+   <!--Add Left Camera Link-->
+   <joint name="left_camera_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="left_camera_link"/>
+      <origin xyz="0.14 0.0 0.16" rpy="0 0 0"/>
+   </joint>
+
+   <link name="left_camera_link">
+      <visual>
+         <geometry>
+            <box size="0.010 0.03 0.03"/>
+         </geometry>
+         <material name="blue"/>
+      </visual>
+   </link>
+
+   <joint name="left_camera_optical_joint" type="fixed">
+      <parent link="left_camera_link"/>
+      <child link="left_camera_link_optical"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+   </joint>
+
+   <link name="left_camera_link_optical"/>
+
+   <!--Add Multi Camera Plugin-->
+    <gazebo reference="left_camera_link">
+      <sensor name="camera" type="wideanglecamera">
+        <camera>
+          <horizontal_fov>3.1415</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+          <lens>
+            <type>stereographic</type>
+            <scale_to_hfov>true</scale_to_hfov>
+            <cutoff_angle>1.5707</cutoff_angle>
+            <env_texture_size>512</env_texture_size>
+          </lens>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <plugin name="left_cam_ros" filename="libgazebo_ros_camera.so">
+          <ros>
+              <remapping>image:=/camera/image_raw</remapping>
+              <remapping>camera_info:=/camera/camera_info</remapping>
+          </ros>
+          <frame_name>left_camera_link_optical</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+</robot>
