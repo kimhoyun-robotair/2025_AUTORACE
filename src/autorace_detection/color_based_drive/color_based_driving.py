@@ -25,7 +25,7 @@ class ColorBasedDrive(Node):
         self.declare_parameter("speed_red", 0.2)
         self.declare_parameter("speed_blue", 0.5)
         self.declare_parameter("angular_gain", 1.0)      # lower gain to reduce oscillation
-        self.declare_parameter("max_angular", 0.2)       # lower max angular speed
+        self.declare_parameter("max_angular", 0.35)       # lower max angular speed
         self.declare_parameter("deadband", 0.02)         # normalized offset deadband
 
         self.speed_red = float(self.get_parameter("speed_red").value)

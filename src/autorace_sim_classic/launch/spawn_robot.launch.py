@@ -18,7 +18,7 @@ def generate_launch_description():
 
     # Position and orientation
     # [X, Y, Z]
-    position = [-4.25, 2.6, 0]
+    position = [-4.25, 2.61, 0]
     # [Roll, Pitch, Yaw]
     orientation = [0.0, 0.0, 0.0]
 

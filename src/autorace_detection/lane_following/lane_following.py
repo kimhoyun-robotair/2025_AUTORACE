@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Lane following controller.
-- Subscribes: /lane/white_mask (from lane_detector.py, BEV mask BGR image)
-- Publishes:  /control/color_zone_twist (Twist command proposal for FSM COLOR_ZONE)
+- Subscribes: /lane/yellow_mask (from lane_detector.py, BEV mask BGR image)
+- Publishes:  /control/lane_cmd (Twist proposal for FSM)
 Strategy:
   - Compute mask centroid (cx) and steer based on offset from image center.
   - If mask is lost for a few frames, stop for safety.
@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
@@ -22,7 +23,7 @@ class LaneFollower(Node):
         super().__init__("lane_follower")
 
         # Parameters for simple steering control
-        self.declare_parameter("linear_speed", 0.35)
+        self.declare_parameter("linear_speed", 0.4)
         self.declare_parameter("angular_gain", 2.0)       # gain on normalized error
         self.declare_parameter("max_angular", 0.7)        # max angular speed
         self.declare_parameter("center_bias_px", 0.0)     # pixel bias if camera is offset
@@ -41,8 +42,7 @@ class LaneFollower(Node):
         # Publish to a dedicated lane-following control channel; FSM will republish to /cmd_vel.
         # (Changed from publishing directly to /cmd_vel to avoid bus contention.)
         self.cmd_pub = self.create_publisher(Twist, "/control/lane_cmd", 10)
-
-        self.get_logger().info("LaneFollower ready: sub /lane/white_mask -> pub /control/lane_cmd")
+        self.get_logger().info("LaneFollower ready: sub /lane/yellow_mask -> pub /control/lane_cmd")
 
     def mask_cb(self, msg: Image):
         # Convert to grayscale mask

@@ -23,6 +23,9 @@ def generate_launch_description():
     image_share = get_package_share_directory('image_preprocessing')
     bev_launch = os.path.join(image_share, 'launch', 'image_rectify.launch.py')
 
+    gap_share = get_package_share_directory("gap_finder")
+    gap_launch = os.path.join(gap_share, "launch", "gap_finder_launch.py")
+
     detection_nodes = [
         Node(
             package="autorace_detection",
@@ -70,6 +73,10 @@ def generate_launch_description():
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(bev_launch),
+                launch_arguments={}.items(),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(gap_launch),
                 launch_arguments={}.items(),
             ),
         ]

@@ -79,8 +79,11 @@ class WhiteLaneDetector(Node):
         # ROS Image -> OpenCV BGR 이미지
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
-        # 1) 마스크 생성 (현재 설정은 노란색 범위)
+        # 1) 마스크 생성 (현재 설정은 흰색 범위)
         mask = self.mask_white_lane(img)
+
+        # 1-1) 가로선 강조: 컨투어의 가로/세로 비가 큰 것만 남김
+        mask = self.keep_horizontal(mask)
 
         # 2) 슬라이딩 윈도우 피팅은 여기서는 안 사용 (필요하면 유지 가능)
         # lane_fitx, ploty = self.fit_lane_sliding_window(mask)
@@ -115,6 +118,23 @@ class WhiteLaneDetector(Node):
 
         mask = cv2.inRange(hsv, lower_white, upper_white)
         return mask
+
+    def keep_horizontal(self, mask: np.ndarray) -> np.ndarray:
+        """컨투어 중 가로로 긴 것(가로/세로 비율이 threshold 이상)만 남김."""
+        aspect_threshold = 3.0  # 가로가 세로보다 3배 이상일 때만 허용
+        min_area = 500.0        # 너무 작은 잡음 제거
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        filtered = np.zeros_like(mask)
+        for c in contours:
+            x, y, w, h = cv2.boundingRect(c)
+            if h == 0:
+                continue
+            aspect = w / float(h)
+            area = w * h
+            if aspect >= aspect_threshold and area >= min_area:
+                cv2.drawContours(filtered, [c], -1, 255, thickness=cv2.FILLED)
+        return filtered
 
     # ----------------- Sliding Window Lane Fitting -----------------
 
