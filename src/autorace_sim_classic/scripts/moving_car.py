@@ -9,10 +9,10 @@ class BoxController(Node):
         super().__init__('box_controller')
 
         # === 파라미터 (필요하면 launch에서 override 가능) ===
-        self.declare_parameter('radius', 1.0)   # [m]
+        self.declare_parameter('radius', 0.95)   # [m]
         self.declare_parameter('speed', 0.5)    # [m/s] 선속도 v
-        self.declare_parameter('cmd_topic', '/demo/box_cmd_demo')
-        self.declare_parameter('odom_topic', '/demo/box_odom_demo')
+        self.declare_parameter('cmd_topic', '/demo/box0_cmd_demo')
+        self.declare_parameter('odom_topic', '/demo/box0_odom_demo')
         self.declare_parameter('hz', 50.0)      # 발행 주기 [Hz]
 
         R   = float(self.get_parameter('radius').value)
