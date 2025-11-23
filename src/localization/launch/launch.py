@@ -9,6 +9,7 @@ def generate_launch_description():
 
     tf_yaml = PathJoinSubstitution([pkg_share, 'config', 'tf_config.yaml'])
     cam_yaml = PathJoinSubstitution([pkg_share, 'config', 'camera_config.yaml'])
+    usb_cam_yaml = PathJoinSubstitution([pkg_share, 'config', 'usb_cam_params.yaml'])
 
     return LaunchDescription([
         Node(
@@ -31,5 +32,13 @@ def generate_launch_description():
                 'bev_frame': 'bev',
             }],
         ),
+        Node(
+            package='usb_cam',
+            executable='usb_cam_node_exe',
+            name='usb_cam',
+            # 위에서 정의한 cam_yaml 변수를 그대로 사용
+            parameters=[usb_cam_yaml], 
+            output='screen'
+        )
     ])
 
