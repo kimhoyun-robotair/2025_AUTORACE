@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version="1.7">
+  <model name="left marker">
+    <static>true</static>
+    <pose>0 0 0 0 0 0</pose>
+
+    <link name="base">
+
+      <!-- 텍스처가 입혀진 10m x 6m 평면 (z=0.001로 z-fighting 방지) -->
+      <visual name="base_visual_plane">
+        <pose>0 0 0.001 0 1.5707 0</pose>
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>.3 .3</size>
+          </plane>
+        </geometry>
+        <material>
+          <script>
+            <!-- 스크립트/텍스처 경로 등록 -->
+            <uri>model://left_marker/materials/scripts</uri>
+            <uri>model://left_marker/materials/textures</uri>
+            <!-- ★ 스크립트에 정의한 이름과 동일해야 함 -->
+            <name>Leftmarker/Albedo</name>
+          </script>
+          <!-- 아래 색상들은 스크립트가 대체하므로 굳이 필요 없음 (남겨도 무방) -->
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0 0 0 1</specular>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
+

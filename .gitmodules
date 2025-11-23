@@ -1,0 +1,9 @@
+[submodule "src/mpc_bicycle"]
+	path = src/mpc_bicycle
+	url = https://github.com/12B-theDon/dodger_MPC_ws.git
+[submodule "src/yolo_ros"]
+	path = src/yolo_ros
+	url = https://github.com/kimhoyun-robotair/yolo_ros.git
+[submodule "src/gapFinder"]
+	path = src/gapFinder
+	url = https://github.com/kimhoyun-robotair/gapFinder.git

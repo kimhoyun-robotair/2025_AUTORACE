@@ -1,0 +1,25 @@
+material 2025Autorace/Albedo
+{
+  receive_shadows on
+  technique
+  {
+    pass
+    {
+      lighting on
+      depth_write on
+      depth_check on
+
+      ambient 1 1 1 1
+      diffuse 1 1 1 1
+      specular 0 0 0 1 8
+
+      texture_unit
+      {
+        texture 2025autorace.png
+        tex_address_mode wrap
+        filtering trilinear
+      }
+    }
+  }
+}
+
