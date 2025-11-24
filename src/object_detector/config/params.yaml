@@ -2,7 +2,7 @@ scan_processor_node:
   ros__parameters:
     # 스캔 데이터 필터링 파라미터
     scan_range_min: 0.0            # (m) 레이저 스캔 데이터에서 고려할 최소 거리
-    scan_range_max: 8.0            # (m) 레이저 스캔 데이터에서 고려할 최대 거리
+    scan_range_max: 2.0            # (m) 레이저 스캔 데이터에서 고려할 최대 거리
     scan_angle_min: -2.35619       # (rad) 스캔 데이터에서 고려할 최소 각도 (-π/2 ≒ -1.5708 rad)
     scan_angle_max: 2.35619         # (rad) 스캔 데이터에서 고려할 최대 각도 (π/2 ≒ 1.5708 rad)
 
@@ -15,7 +15,7 @@ scan_processor_node:
     wall_distance_threshold: 0.12  # (m) 연속된 스캔 점 사이의 최대 거리 – 이 값 이하이면 같은 그룹으로 묶음
     wall_line_max_error: 0.015     # (m) 그룹 내 점들을 직선으로 근사할 때 허용하는 최대 오차
     min_wall_cluster_points: 6     # (개) 벽으로 판단하기 위한 그룹 내 최소 점 개수
-    wall_length_threshold: 0.25    # (m) 그룹 선분 길이가 이 값보다 크면 벽으로 간주
+    wall_length_threshold: 0.40    # (m) 그룹 선분 길이가 이 값보다 크면 벽으로 간주
 
     # 멀리 있는 장애물 필터링 관련 파라미터
     far_obstacle_distance_threshold: 4.5  # (m) 센서로부터의 거리가 이 값 이상이면 '멀리 있는 장애물'로 판단

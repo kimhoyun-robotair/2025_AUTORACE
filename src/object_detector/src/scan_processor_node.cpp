@@ -1,476 +1,393 @@
-// scan_processor_node.cpp
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
-#include <geometry_msgs/msg/point_stamped.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
 #include <cmath>
 #include <vector>
-#include <limits>
 #include <deque>
-#include <algorithm>
+#include <iostream>
+#include <utility>   // std::pair
+#include <iomanip>   // std::setprecision
 
-// 2차원 점 구조체 정의
 struct Point2D
 {
-  double x, y;
+  double x;
+  double y;
 };
 
 class ScanProcessor : public rclcpp::Node
 {
 public:
-  ScanProcessor() : Node("scan_processor"),
-                    tf_buffer_(this->get_clock()),
-                    tf_listener_(tf_buffer_)
+  ScanProcessor()
+  : Node("scan_processor"),
+    window_size_(20),
+    merge_threshold_(0.18),
+    speed_window_size_(10),
+    speed_swap_margin_(0.02),   // 평균 속도 차이가 2cm/frame 이상일 때만 swap
+    swap_cooldown_(0),
+    swap_cooldown_max_(15)      // swap 후 15프레임 동안은 다시 swap 금지
   {
-    // 스캔 데이터 필터링 파라미터 [m, radian]
+    // 기본 필터 파라미터
     this->declare_parameter<double>("scan_range_min", 0.0);
     this->declare_parameter<double>("scan_range_max", 10.0);
-    // YAML 파일에서는 파이 표현식을 사용할 수 없으므로, 코드 내에서 M_PI를 사용합니다.
-    this->declare_parameter<double>("scan_angle_min", -M_PI / 3);
-    this->declare_parameter<double>("scan_angle_max", M_PI / 3);
+    this->declare_parameter<double>("scan_angle_min", -M_PI / 3.0);
+    this->declare_parameter<double>("scan_angle_max",  M_PI / 3.0);
 
-    // DB clustering 파라미터
-    this->declare_parameter<int>("min_cluster_points", 5);
-    this->declare_parameter<double>("dbscan_epsilon", 0.5);
-    this->declare_parameter<int>("dbscan_max_points", 50);
+    this->get_parameter("scan_range_min",  scan_range_min_);
+    this->get_parameter("scan_range_max",  scan_range_max_);
+    this->get_parameter("scan_angle_min",  scan_angle_min_);
+    this->get_parameter("scan_angle_max",  scan_angle_max_);
 
-    // 벽 필터링 관련 파라미터
-    this->declare_parameter<double>("wall_distance_threshold", 0.1);
-    this->declare_parameter<double>("wall_line_max_error", 0.05);
-    this->declare_parameter<int>("min_wall_cluster_points", 5);
-    this->declare_parameter<double>("wall_length_threshold", 0.35);
+    scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
+      "/scan", 10,
+      std::bind(&ScanProcessor::scanCallback, this, std::placeholders::_1));
 
-    // 멀리 있는 장애물 필터링 관련 파라미터
-    this->declare_parameter<double>("far_obstacle_distance_threshold", 5.0); // 3m 이상이면
-    this->declare_parameter<int>("far_obstacle_min_points", 3);              // 최소 3개의 점이 필요
-    this->declare_parameter<double>("dynamic_wall_gap_factor", 1.5);         // 먼 거리 벽 그룹화를 위한 동적 임계값 배율
-
-    // 파라미터 값 로드
-    this->get_parameter("scan_range_min", scan_range_min_);
-    this->get_parameter("scan_range_max", scan_range_max_);
-    this->get_parameter("scan_angle_min", scan_angle_min_);
-    this->get_parameter("scan_angle_max", scan_angle_max_);
-    this->get_parameter("min_cluster_points", min_cluster_points_);
-    this->get_parameter("dbscan_epsilon", dbscan_epsilon_);
-    this->get_parameter("dbscan_max_points", dbscan_max_points_);
-    this->get_parameter("wall_distance_threshold", wall_distance_threshold_);
-    this->get_parameter("wall_line_max_error", wall_line_max_error_);
-    this->get_parameter("min_wall_cluster_points", min_wall_cluster_points_);
-    this->get_parameter("wall_length_threshold", wall_length_threshold_);
-    this->get_parameter("far_obstacle_distance_threshold", far_obstacle_distance_threshold_);
-    this->get_parameter("far_obstacle_min_points", far_obstacle_min_points_);
-    this->get_parameter("dynamic_wall_gap_factor", dynamic_wall_gap_factor_);
-
-    scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan", 20, std::bind(&ScanProcessor::scanCallback, this, std::placeholders::_1));
-    candidate_pub_ = this->create_publisher<geometry_msgs::msg::PointStamped>("/obstacle_candidates", 20);
-    filtered_scan_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("filtered_scan_points", 20);
+    marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
+      "cluster_centers", 10);
   }
 
 private:
-  // DBSCAN 함수
-  std::vector<std::vector<Point2D>> dbscanClustering(const std::vector<Point2D> &points, double eps, int minPts)
+  // ---------- 유틸 함수들 ----------
+
+  double dist(const Point2D &a, const Point2D &b) const
   {
-    std::vector<std::vector<Point2D>> clusters;
-    const int n = points.size();
-    if (n == 0)
-      return clusters;
-
-    std::vector<bool> visited(n, false);
-    std::vector<int> cluster_ids(n, -1);
-    int cluster_id = 0;
-
-    // eps 제곱값을 미리 계산하여 사용
-    double eps_sq = eps * eps;
-
-    // regionQuery: 자기 자신은 제외하고, eps_sq 이내에 있는 점들의 인덱스를 반환
-    auto regionQuery = [&](int index) -> std::vector<int>
-    {
-      std::vector<int> ret;
-      for (int i = 0; i < n; i++)
-      {
-        if (i == index)
-          continue; // 자기 자신은 제외
-        double dx = points[index].x - points[i].x;
-        double dy = points[index].y - points[i].y;
-        double dist_sq = dx * dx + dy * dy;
-        if (dist_sq <= eps_sq)
-          ret.push_back(i);
-      }
-      return ret;
-    };
-
-    // DBSCAN 알고리즘 본문
-    for (int i = 0; i < n; i++)
-    {
-      if (visited[i])
-        continue;
-
-      visited[i] = true;
-      std::vector<int> neighbors = regionQuery(i);
-      if (neighbors.size() < static_cast<size_t>(minPts))
-      {
-        continue; // 노이즈로 간주
-      }
-
-      // 새로운 클러스터 생성 및 초기화
-      cluster_ids[i] = cluster_id;
-      std::vector<int> seeds = neighbors;
-      // seeds에 포함된 점을 추적하기 위한 inSeeds 벡터
-      std::vector<bool> inSeeds(n, false);
-      for (int idx : seeds)
-        inSeeds[idx] = true;
-
-      // seeds를 순회하며 클러스터 확장
-      for (size_t j = 0; j < seeds.size(); j++)
-      {
-        int curr = seeds[j];
-        if (!visited[curr])
-        {
-          visited[curr] = true;
-          std::vector<int> curr_neighbors = regionQuery(curr);
-          if (curr_neighbors.size() >= static_cast<size_t>(minPts))
-          {
-            // 중복 검사 후 새로운 이웃 추가
-            for (int neighbor : curr_neighbors)
-            {
-              if (!inSeeds[neighbor])
-              {
-                seeds.push_back(neighbor);
-                inSeeds[neighbor] = true;
-              }
-            }
-          }
-        }
-        if (cluster_ids[curr] == -1)
-        {
-          cluster_ids[curr] = cluster_id;
-        }
-      }
-      cluster_id++;
-    }
-
-    // cluster_ids를 기반으로 클러스터별로 점들을 모음
-    clusters.resize(cluster_id);
-    for (int i = 0; i < n; i++)
-    {
-      int id = cluster_ids[i];
-      if (id != -1)
-        clusters[id].push_back(points[i]);
-    }
-
-    // 클러스터 내 점의 수가 maxPoints보다 많으면, 클러스터의 중심에 가까운 점들만 선택
-    for (auto &cluster : clusters)
-    {
-      if (cluster.size() > static_cast<size_t>(dbscan_max_points_))
-      {
-        // 클러스터의 중심(centroid) 계산
-        double sumX = 0, sumY = 0;
-        for (const auto &pt : cluster)
-        {
-          sumX += pt.x;
-          sumY += pt.y;
-        }
-        double centerX = sumX / cluster.size();
-        double centerY = sumY / cluster.size();
-
-        // 각 점의 중심으로부터의 거리로 정렬 (sqrt 연산 없이 제곱 비교)
-        std::sort(cluster.begin(), cluster.end(), [=](const Point2D &a, const Point2D &b)
-                  {
-          double dxA = a.x - centerX, dyA = a.y - centerY;
-          double dxB = b.x - centerX, dyB = b.y - centerY;
-          return (dxA * dxA + dyA * dyA) < (dxB * dxB + dyB * dyB); });
-
-        // 중심에 가까운 maxPoints개만 남김
-        cluster.resize(dbscan_max_points_);
-      }
-    }
-
-    return clusters;
+    return std::hypot(a.x - b.x, a.y - b.y);
   }
 
-  // 연속된 점 그룹(클러스터)이 벽일 가능성이 있는지 판단하는 함수.
-  bool isWallCluster(const std::vector<Point2D> &cluster)
+  Point2D add(const Point2D &a, const Point2D &b) const
   {
-    if (cluster.size() < static_cast<size_t>(min_wall_cluster_points_))
-      return false;
-
-    const Point2D &p1 = cluster.front();
-    const Point2D &p2 = cluster.back();
-    double dx = p2.x - p1.x;
-    double dy = p2.y - p1.y;
-    double cluster_length = std::sqrt(dx * dx + dy * dy);
-
-    // 그룹의 길이가 wall_length_threshold_ 보다 크면 벽으로 판단
-    if (cluster_length > wall_length_threshold_)
-      return true;
-
-    double norm = cluster_length;
-    if (norm < 1e-6)
-      return false;
-
-    double max_error = 0.0;
-    // 각 점과 선분 사이의 수선 거리를 계산하여 최대 오차 판단
-    for (const auto &pt : cluster)
-    {
-      double error = std::fabs(dy * pt.x - dx * pt.y + p2.x * p1.y - p2.y * p1.x) / norm;
-      if (error > max_error)
-        max_error = error;
-    }
-    return max_error < wall_line_max_error_;
+    return {a.x + b.x, a.y + b.y};
   }
 
-  // 동적 임계값을 이용하여 벽으로 보이는 점 그룹들을 필터링
-  // 센서의 위치(sensor_x, sensor_y)와 스캔의 angle_increment를 사용하여, 멀리 있는 벽의 경우 예상 간격(R * angle_increment)에 따라 인접 점 그룹화를 수행.
-  std::vector<Point2D> filterWallPoints(const std::vector<Point2D> &points,
-                                        double sensor_x, double sensor_y,
-                                        double angle_increment)
+  Point2D sub(const Point2D &a, const Point2D &b) const
   {
-    std::vector<Point2D> filtered_points;
-    if (points.empty())
-      return filtered_points;
+    return {a.x - b.x, a.y - b.y};
+  }
 
-    // 센서와 각 점 사이의 거리를 미리 계산 (sqrt 연산을 한 번씩만 수행)
-    std::vector<double> sensor_dists;
-    sensor_dists.reserve(points.size());
-    for (const auto &pt : points)
+  // points 에 대해 K-means(k=2)
+  std::pair<Point2D, Point2D> kmeans2(const std::vector<Point2D> &pts) const
+  {
+    // 최소 2개는 있다고 가정
+    Point2D c1 = pts.front();
+    Point2D c2 = pts.back();
+
+    const int max_iter = 10;
+    std::vector<int> labels(pts.size(), 0);
+
+    for (int iter = 0; iter < max_iter; ++iter)
     {
-      double dx = pt.x - sensor_x;
-      double dy = pt.y - sensor_y;
-      sensor_dists.push_back(std::sqrt(dx * dx + dy * dy));
+      // 1) 할당
+      for (size_t i = 0; i < pts.size(); ++i)
+      {
+        double d1 = dist(pts[i], c1);
+        double d2 = dist(pts[i], c2);
+        labels[i] = (d1 <= d2) ? 0 : 1;
+      }
+
+      // 2) 새로운 중심 계산
+      Point2D new_c1{0.0, 0.0}, new_c2{0.0, 0.0};
+      int count1 = 0, count2 = 0;
+
+      for (size_t i = 0; i < pts.size(); ++i)
+      {
+        if (labels[i] == 0)
+        {
+          new_c1.x += pts[i].x;
+          new_c1.y += pts[i].y;
+          ++count1;
+        }
+        else
+        {
+          new_c2.x += pts[i].x;
+          new_c2.y += pts[i].y;
+          ++count2;
+        }
+      }
+
+      if (count1 > 0)
+      {
+        new_c1.x /= static_cast<double>(count1);
+        new_c1.y /= static_cast<double>(count1);
+      }
+      if (count2 > 0)
+      {
+        new_c2.x /= static_cast<double>(count2);
+        new_c2.y /= static_cast<double>(count2);
+      }
+
+      double move1 = dist(c1, new_c1);
+      double move2 = dist(c2, new_c2);
+      c1 = new_c1;
+      c2 = new_c2;
+      if (move1 < 1e-4 && move2 < 1e-4)
+        break;
     }
 
-    std::vector<Point2D> current_cluster;
-    current_cluster.push_back(points[0]);
+    return {c1, c2};
+  }
 
-    // 반복문 내에서 사용하는 상수 factor 미리 계산
-    double factor = angle_increment * dynamic_wall_gap_factor_;
+  // deque 에 새 점을 넣고, 평균을 반환 (smoothing)
+  Point2D pushAndSmooth(std::deque<Point2D> &hist, const Point2D &p)
+  {
+    hist.push_back(p);
+    if (hist.size() > window_size_)
+      hist.pop_front();
 
-    for (size_t i = 1; i < points.size(); ++i)
+    double sx = 0.0, sy = 0.0;
+    for (const auto &h : hist)
     {
-      // 이전 점과 현재 점 사이의 거리 제곱 계산 (sqrt 제거)
-      double dx = points[i].x - points[i - 1].x;
-      double dy = points[i].y - points[i - 1].y;
-      double actual_gap_sq = dx * dx + dy * dy;
+      sx += h.x;
+      sy += h.y;
+    }
+    double n = static_cast<double>(hist.size());
+    return {sx / n, sy / n};
+  }
 
-      // 센서로부터의 거리는 미리 계산된 값을 사용하여 평균값 구함
-      double avg_range = (sensor_dists[i - 1] + sensor_dists[i]) * 0.5;
-      double expected_gap = avg_range * factor;
-      double dynamic_threshold = wall_distance_threshold_ + expected_gap;
-      double dynamic_threshold_sq = dynamic_threshold * dynamic_threshold;
+  // 속도 히스토리 평균
+  double avgSpeed(const std::deque<double> &hist) const
+  {
+    if (hist.empty())
+      return 0.0;
+    double s = 0.0;
+    for (double v : hist)
+      s += v;
+    return s / static_cast<double>(hist.size());
+  }
 
-      if (actual_gap_sq < dynamic_threshold_sq)
+  // 이전 history 기반으로 raw c1, c2 를 A/B 에 매칭
+  void associateClusters(const Point2D &c1,
+                         const Point2D &c2,
+                         Point2D &outA,
+                         Point2D &outB)
+  {
+    // history 가 없다면 그냥 고정 순서로 세팅
+    if (hist_A_.empty() || hist_B_.empty())
+    {
+      outA = c1;
+      outB = c2;
+      return;
+    }
+
+    // history 가 충분히 쌓이기 전: "가까운 쪽" 기준으로 매칭
+    if (hist_A_.size() < 5 || hist_B_.size() < 5)
+    {
+      Point2D lastA = hist_A_.back();
+      Point2D lastB = hist_B_.back();
+
+      double cost1 = dist(c1, lastA) + dist(c2, lastB);
+      double cost2 = dist(c2, lastA) + dist(c1, lastB);
+
+      if (cost1 <= cost2)
       {
-        current_cluster.push_back(points[i]);
+        outA = c1;
+        outB = c2;
       }
       else
       {
-        if (!isWallCluster(current_cluster))
-        {
-          filtered_points.insert(filtered_points.end(),
-                                 current_cluster.begin(), current_cluster.end());
-        }
-        current_cluster.clear();
-        current_cluster.push_back(points[i]);
+        outA = c2;
+        outB = c1;
       }
+      return;
     }
-    // 마지막 그룹 처리
-    if (!isWallCluster(current_cluster))
+
+    // 그 외: 이전 프레임 속도를 이용한 예측 기반 매칭
+    Point2D prevA = hist_A_[hist_A_.size() - 2];
+    Point2D lastA = hist_A_.back();
+    Point2D prevB = hist_B_[hist_B_.size() - 2];
+    Point2D lastB = hist_B_.back();
+
+    Point2D vA_prev = sub(lastA, prevA);  // 이전 A 속도
+    Point2D vB_prev = sub(lastB, prevB);  // 이전 B 속도
+
+    // 이 속도로 한 프레임 더 갔다고 예측
+    Point2D predA = add(lastA, vA_prev);
+    Point2D predB = add(lastB, vB_prev);
+
+    // case1: c1->A, c2->B
+    double cost1 = dist(c1, predA) + dist(c2, predB);
+
+    // case2: c1->B, c2->A
+    double cost2 = dist(c2, predA) + dist(c1, predB);
+
+    if (cost1 <= cost2)
     {
-      filtered_points.insert(filtered_points.end(),
-                             current_cluster.begin(), current_cluster.end());
+      outA = c1;
+      outB = c2;
     }
-    return filtered_points;
+    else
+    {
+      outA = c2;
+      outB = c1;
+    }
   }
 
-  // 두 후보점 사이를 선형 보간하여 중간 점들을 생성
-  std::vector<geometry_msgs::msg::PointStamped> interpolateCandidates(
-      const geometry_msgs::msg::PointStamped &p1,
-      const geometry_msgs::msg::PointStamped &p2,
-      int num_points)
-  {
-    std::vector<geometry_msgs::msg::PointStamped> interp;
-    for (int i = 1; i <= num_points; i++)
-    {
-      double fraction = static_cast<double>(i) / (num_points + 1);
-      geometry_msgs::msg::PointStamped new_point;
-      new_point.header.frame_id = p1.header.frame_id;
-      // stamp는 p1의 시간으로 설정하거나 현재시간/평균시간으로 설정할 수 있음.
-      new_point.header.stamp = p1.header.stamp;
-      new_point.point.x = p1.point.x + fraction * (p2.point.x - p1.point.x);
-      new_point.point.y = p1.point.y + fraction * (p2.point.y - p1.point.y);
-      new_point.point.z = 0.0;
-      interp.push_back(new_point);
-    }
-    return interp;
-  }
+  // ---------- 콜백 ----------
 
   void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan_msg)
   {
     std::vector<Point2D> points;
-    // 1. 포인트 필터링: 메모리 예약
-    // 스캔 데이터에서 범위 및 각도 조건에 맞는 점들을 선별
     points.reserve(scan_msg->ranges.size());
+
+    // 1) LaserScan → 점 집합 (로봇 기준 좌표)
     for (size_t i = 0; i < scan_msg->ranges.size(); ++i)
     {
-      double range = scan_msg->ranges[i];
-      double angle = scan_msg->angle_min + i * scan_msg->angle_increment;
-      if (range < scan_range_min_ || range > scan_range_max_ ||
-          angle < scan_angle_min_ || angle > scan_angle_max_)
+      double r = scan_msg->ranges[i];
+      if (std::isnan(r) || std::isinf(r))
         continue;
-      points.push_back({range * std::cos(angle), range * std::sin(angle)});
+
+      double angle = scan_msg->angle_min + static_cast<double>(i) * scan_msg->angle_increment;
+
+      if (r < scan_range_min_ || r > scan_range_max_ ||
+          angle < scan_angle_min_ || angle > scan_angle_max_)
+      {
+        continue;
+      }
+
+      Point2D p{r * std::cos(angle), r * std::sin(angle)};
+      points.push_back(p);
     }
 
-    // TF 변환: 레이저 좌표계를 map 좌표계로 변환
-    std::vector<Point2D> map_points;
-    map_points.reserve(points.size());
-    // 루프 전에 한 번만 변환 조회
-    if (!tf_buffer_.canTransform("map", scan_msg->header.frame_id, scan_msg->header.stamp, tf2::durationFromSec(0.1)))
+    if (points.size() < 2)
     {
-      RCLCPP_WARN(this->get_logger(), "Transform not available");
-      return;
-    }
-    geometry_msgs::msg::TransformStamped transformStamped;
-    try
-    {
-      transformStamped = tf_buffer_.lookupTransform("map", scan_msg->header.frame_id, scan_msg->header.stamp, tf2::durationFromSec(0.1));
-    }
-    catch (tf2::TransformException &ex)
-    {
-      RCLCPP_WARN(this->get_logger(), "Lookup transform failed: %s", ex.what());
+      // 점이 너무 적으면 처리 안 함
       return;
     }
 
-    for (const auto &pt : points)
-    {
-      geometry_msgs::msg::PointStamped laser_pt, map_pt;
-      laser_pt.header = scan_msg->header;
-      laser_pt.point.x = pt.x;
-      laser_pt.point.y = pt.y;
-      laser_pt.point.z = 0.0;
+    // 2) K-means(k=2) → raw center 2개
+    auto centers = kmeans2(points);
+    Point2D c1 = centers.first;
+    Point2D c2 = centers.second;
 
-      try
+    // 3) 이전 history 기반으로 A/B identity 매칭 (raw)
+    Point2D rawA, rawB;
+    associateClusters(c1, c2, rawA, rawB);
+
+    // 4) smoothing 후 최종 표시용 중심 계산
+    Point2D smoothA = pushAndSmooth(hist_A_, rawA);
+    Point2D smoothB = pushAndSmooth(hist_B_, rawB);
+
+    // 5) "움직이는 클러스터 = 항상 A(빨강)" 이 되게 velocity 크기 비교
+    if (hist_A_.size() >= 2 && hist_B_.size() >= 2)
+    {
+      Point2D lastA_prev = hist_A_[hist_A_.size() - 2];
+      Point2D lastA      = hist_A_.back();
+      Point2D lastB_prev = hist_B_[hist_B_.size() - 2];
+      Point2D lastB      = hist_B_.back();
+
+      Point2D vA_raw = sub(lastA, lastA_prev);
+      Point2D vB_raw = sub(lastB, lastB_prev);
+
+      double speedA = std::hypot(vA_raw.x, vA_raw.y);
+      double speedB = std::hypot(vB_raw.x, vB_raw.y);
+
+      // 최근 속도 히스토리 업데이트
+      speed_hist_A_.push_back(speedA);
+      if (speed_hist_A_.size() > speed_window_size_)
+        speed_hist_A_.pop_front();
+
+      speed_hist_B_.push_back(speedB);
+      if (speed_hist_B_.size() > speed_window_size_)
+        speed_hist_B_.pop_front();
+
+      double avgA = avgSpeed(speed_hist_A_);
+      double avgB = avgSpeed(speed_hist_B_);
+
+      if (swap_cooldown_ > 0)
+        --swap_cooldown_;
+
+      // 평균 속도 차이가 margin보다 크고, 쿨다운이 0일 때만 swap
+      if (avgB > avgA + speed_swap_margin_ && swap_cooldown_ == 0)
       {
-        tf2::doTransform(laser_pt, map_pt, transformStamped);
-        map_points.push_back({map_pt.point.x, map_pt.point.y});
-      }
-      catch (tf2::TransformException &ex)
-      {
-        RCLCPP_WARN(this->get_logger(), "doTransform failed: %s", ex.what());
+        std::swap(hist_A_, hist_B_);
+        std::swap(speed_hist_A_, speed_hist_B_);
+        std::swap(smoothA, smoothB);
+        swap_cooldown_ = swap_cooldown_max_;
       }
     }
 
-    // 센서의 map 좌표계 상 위치를 먼저 구함 (동적 임계값 계산에 사용)
-    geometry_msgs::msg::TransformStamped sensor_transform;
-    try
-    {
-      sensor_transform = tf_buffer_.lookupTransform("map", scan_msg->header.frame_id, scan_msg->header.stamp, tf2::durationFromSec(0.1));
-    }
-    catch (tf2::TransformException &ex)
-    {
-      RCLCPP_WARN(this->get_logger(), "Transform(Laser Sensor location in map frame) lookup failed: %s", ex.what());
-      sensor_transform.transform.translation.x = 0.0;
-      sensor_transform.transform.translation.y = 0.0;
-    }
-    double sensor_x = sensor_transform.transform.translation.x;
-    double sensor_y = sensor_transform.transform.translation.y;
+    // 6) 두 중심 간 거리
+    double dAB = dist(smoothA, smoothB);
 
-    // 벽 특성을 보이는 점들을 동적 임계값을 적용하여 필터링 (멀리 있는 벽도 하나의 그룹으로 묶임)
-    auto filtered_map_points = filterWallPoints(map_points, sensor_x, sensor_y, scan_msg->angle_increment);
-
-    // 필터링된 점들을 rviz에서 확인할 수 있도록 Marker 메시지로 퍼블리시
+    // 7) Marker 생성
     visualization_msgs::msg::Marker marker;
-    marker.header.frame_id = "map";
+    marker.header.frame_id = scan_msg->header.frame_id;
     marker.header.stamp = scan_msg->header.stamp;
-    marker.ns = "filtered_scan";
+    marker.ns = "centers";
     marker.id = 0;
     marker.type = visualization_msgs::msg::Marker::POINTS;
     marker.action = visualization_msgs::msg::Marker::ADD;
-    // 표시할 점의 크기 (x, y)
-    marker.scale.x = 0.05;
-    marker.scale.y = 0.05;
-    // 색상 설정 (초록색)
-    marker.color.r = 0.0;
-    marker.color.g = 1.0;
-    marker.color.b = 0.0;
-    marker.color.a = 1.0;
-    // 후보군 마커 출력
-    for (const auto &pt : filtered_map_points)
+    marker.scale.x = 0.15;
+    marker.scale.y = 0.15;
+    marker.color.a = 1.0;  // per-point color를 쓰더라도 alpha는 0이 아니어야 함
+
+    geometry_msgs::msg::Point pA, pB;
+    pA.x = smoothA.x;
+    pA.y = smoothA.y;
+    pA.z = 0.0;
+    pB.x = smoothB.x;
+    pB.y = smoothB.y;
+    pB.z = 0.0;
+
+    std::cout << std::fixed << std::setprecision(3);
+
+    if (dAB < merge_threshold_)
     {
-      geometry_msgs::msg::Point p;
-      p.x = pt.x;
-      p.y = pt.y;
-      p.z = 0.0;
-      marker.points.push_back(p);
+      // 너무 가까우면 하나로 merge (A 위치 기준, 색도 빨간색으로)
+      marker.points.push_back(pA);
+
+      std_msgs::msg::ColorRGBA c;
+      c.r = 1.0f; c.g = 0.0f; c.b = 0.0f; c.a = 1.0f; // 빨간색
+      marker.colors.push_back(c);
+
+      std::cout << "Merged: ("
+                << pA.x << ", " << pA.y
+                << ")   dist=" << dAB << std::endl;
     }
-    filtered_scan_pub_->publish(marker);
-
-    // 장애물 후보(클러스터) 검출을 위한 DBSCAN 클러스터링 수행
-    auto clusters = dbscanClustering(filtered_map_points, dbscan_epsilon_, min_cluster_points_);
-
-    // 각 클러스터의 id와 점의 수를 출력
-    // for (size_t i = 0; i < clusters.size(); ++i) {
-    //  RCLCPP_INFO(this->get_logger(), "Cluster %zu: %zu points", i, clusters[i].size());
-    //}
-
-    // 각 클러스터에 대해 후보 장애물의 중심을 계산하고, 멀리 있는 장애물의 경우 최소 점 개수 확인
-    for (const auto &cluster : clusters)
+    else
     {
-      if (cluster.empty())
-        continue;
+      // A: 빨강 (항상 더 많이 움직이는 쪽)
+      marker.points.push_back(pA);
+      std_msgs::msg::ColorRGBA cA;
+      cA.r = 1.0f; cA.g = 0.0f; cA.b = 0.0f; cA.a = 1.0f;
+      marker.colors.push_back(cA);
 
-      // 클러스터의 중심 계산
-      double sum_x = 0, sum_y = 0;
-      for (const auto &pt : cluster)
-      {
-        sum_x += pt.x;
-        sum_y += pt.y;
-      }
-      geometry_msgs::msg::PointStamped candidate;
-      candidate.header.frame_id = "map";
-      candidate.header.stamp = scan_msg->header.stamp;
-      candidate.point.x = sum_x / cluster.size();
-      candidate.point.y = sum_y / cluster.size();
-      candidate.point.z = 0.0;
+      // B: 파랑 (더 정적인 쪽)
+      marker.points.push_back(pB);
+      std_msgs::msg::ColorRGBA cB;
+      cB.r = 0.0f; cB.g = 0.0f; cB.b = 1.0f; cB.a = 1.0f;
+      marker.colors.push_back(cB);
 
-      // 센서 위치로부터 후보 중심까지의 거리 계산
-      double dx = candidate.point.x - sensor_x;
-      double dy = candidate.point.y - sensor_y;
-      double candidate_distance = std::sqrt(dx * dx + dy * dy);
-
-      // 만약 장애물이 멀리(예: 3m 이상) 있다면, 최소 점 개수(far_obstacle_min_points_)를 만족하는 경우에만 후보로 인정
-      if (candidate_distance >= far_obstacle_distance_threshold_ &&
-          cluster.size() < static_cast<size_t>(far_obstacle_min_points_))
-      {
-        continue; // 점의 수가 부족하면 후보로 게시하지 않음.
-      }
-
-      candidate_pub_->publish(candidate);
+      std::cout << "A(" << pA.x << ", " << pA.y << ")   "
+                << "B(" << pB.x << ", " << pB.y << ")   "
+                << "dist=" << dAB << std::endl;
     }
+
+    marker_pub_->publish(marker);
   }
 
+  // ---------- 멤버 변수들 ----------
+
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
-  rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr candidate_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr filtered_scan_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_;
 
-  tf2_ros::Buffer tf_buffer_;
-  tf2_ros::TransformListener tf_listener_;
+  std::deque<Point2D> hist_A_;
+  std::deque<Point2D> hist_B_;
 
-  double scan_range_min_, scan_range_max_, scan_angle_min_, scan_angle_max_;
-  int min_cluster_points_, dbscan_max_points_;
-  double dbscan_epsilon_;
-  double wall_distance_threshold_;
-  double wall_line_max_error_;
-  int min_wall_cluster_points_;
-  double wall_length_threshold_;
+  const std::size_t window_size_;
+  const double merge_threshold_; // [m]
 
-  double far_obstacle_distance_threshold_; // 멀리 있는 장애물 판단 임계거리 (예: 3m)
-  int far_obstacle_min_points_;            // 멀리 있는 장애물로 인식하기 위한 최소 점의 개수
+  // 속도 기반 히스테리시스
+  std::deque<double> speed_hist_A_;
+  std::deque<double> speed_hist_B_;
+  const std::size_t speed_window_size_;
+  const double speed_swap_margin_;
+  int swap_cooldown_;
+  const int swap_cooldown_max_;
 
-  // 동적 임계값 배율 (멀리 있는 벽의 점 간격 보정을 위한 파라미터)
-  double dynamic_wall_gap_factor_;
+  double scan_range_min_;
+  double scan_range_max_;
+  double scan_angle_min_;
+  double scan_angle_max_;
 };
 
 int main(int argc, char **argv)

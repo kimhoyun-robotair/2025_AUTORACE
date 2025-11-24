@@ -22,6 +22,7 @@ install(PROGRAMS
   color_based_drive/color_based_driving.py
   lane_following/lane_detector.py
   lane_following/lane_following.py
+  image_preprocessing/illumination_preprocessor.py
   sign_based_drive/sign_based_driving.py
   stopline_detection/stop_line_detector.py
   stopline_detection/stop_line_stop.py

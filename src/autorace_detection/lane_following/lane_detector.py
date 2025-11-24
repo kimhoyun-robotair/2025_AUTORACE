@@ -18,19 +18,34 @@ class WhiteLaneDetector(Node):
         super().__init__('white_lane_detector')
 
         # 노란색 HSV 범위 파라미터
+        '''
         self.declare_parameter('hue_white_l', 15)
         self.declare_parameter('hue_white_h', 40)
         self.declare_parameter('saturation_white_l', 70)
         self.declare_parameter('saturation_white_h', 255)
         self.declare_parameter('lightness_white_l', 80)
         self.declare_parameter('lightness_white_h', 255)
+        '''
+
+        # 이건 흰색 정지선 및 횡단보도 탐지
+        self.declare_parameter('hue_white_l', 0)
+        self.declare_parameter('hue_white_h', 179)
+        self.declare_parameter('saturation_white_l', 0)
+        self.declare_parameter('saturation_white_h', 30)
+        self.declare_parameter('lightness_white_l', 186)
+        self.declare_parameter('lightness_white_h', 215)
+        self.declare_parameter('min_aspect_ratio', 1.2)  # h/w 비율 하한 (세로가 긴 영역만)
+        self.declare_parameter('min_area', 200.0)        # 너무 작은 잡음 제거
+        self.declare_parameter('crop_left_ratio', 0.1)   # 좌측에서 자를 비율 (0~0.45 권장)
+        self.declare_parameter('crop_right_ratio', 0.1)  # 우측에서 자를 비율 (0~0.45 권장)
+        self.declare_parameter('show_crop_guides', True) # 크롭 기준선 시각화 여부
 
         self.update_params_from_server()
 
         self.bridge = CvBridge()
         self.sub = self.create_subscription(
             Image,
-            '/image_bev',          # BevNode가 퍼블리시하는 BEV 이미지
+            '/image_balanced',          # BevNode가 퍼블리시하는 BEV 이미지
             self.image_callback,
             10
         )
@@ -53,6 +68,14 @@ class WhiteLaneDetector(Node):
         self.saturation_white_h = self.get_parameter('saturation_white_h').value
         self.lightness_white_l = self.get_parameter('lightness_white_l').value
         self.lightness_white_h = self.get_parameter('lightness_white_h').value
+        self.min_aspect_ratio = float(self.get_parameter('min_aspect_ratio').value)
+        self.min_area = float(self.get_parameter('min_area').value)
+        self.crop_left_ratio = float(self.get_parameter('crop_left_ratio').value)
+        self.crop_right_ratio = float(self.get_parameter('crop_right_ratio').value)
+        self.show_crop_guides = bool(self.get_parameter('show_crop_guides').value)
+
+        self.crop_left_ratio = np.clip(self.crop_left_ratio, 0.0, 0.45)
+        self.crop_right_ratio = np.clip(self.crop_right_ratio, 0.0, 0.45)
 
     def on_param_change(self, params):
         ''' 파라미터 값 변경될 경우의 콜백'''
@@ -60,7 +83,10 @@ class WhiteLaneDetector(Node):
             if p.name in [
                 'hue_white_l', 'hue_white_h',
                 'saturation_white_l', 'saturation_white_h',
-                'lightness_white_l', 'lightness_white_h'
+                'lightness_white_l', 'lightness_white_h',
+                'min_aspect_ratio', 'min_area',
+                'crop_left_ratio', 'crop_right_ratio',
+                'show_crop_guides'
             ]:
                 pass
         self.update_params_from_server()
@@ -76,15 +102,32 @@ class WhiteLaneDetector(Node):
 
         # ROS Image -> OpenCV BGR 이미지
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        img = self.crop_sides(img)
 
         # 1) 마스크 생성 (현재 설정은 노란색 범위)
         mask = self.mask_white_lane(img)
+        mask = self.filter_vertical_regions(mask)
 
         # 2) 슬라이딩 윈도우 피팅은 여기서는 안 사용 (필요하면 유지 가능)
         # lane_fitx, ploty = self.fit_lane_sliding_window(mask)
 
         # 3) 마스크만 BGR로 변환해서 시각화/퍼블리시
         debug_img = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+        if self.show_crop_guides and (self.crop_left_ratio > 0 or self.crop_right_ratio > 0):
+            h, w = debug_img.shape[:2]
+            # 좌/우 경계선 표시
+            cv2.line(debug_img, (0, 0), (0, h - 1), (0, 255, 255), 2)
+            cv2.line(debug_img, (w - 1, 0), (w - 1, h - 1), (0, 255, 255), 2)
+            cv2.putText(
+                debug_img,
+                f'crop L:{self.crop_left_ratio:.2f} R:{self.crop_right_ratio:.2f}',
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2,
+                cv2.LINE_AA
+            )
 
         out_msg = self.bridge.cv2_to_imgmsg(debug_img, encoding='bgr8')
         out_msg.header = msg.header
@@ -113,6 +156,35 @@ class WhiteLaneDetector(Node):
 
         mask = cv2.inRange(hsv, lower_white, upper_white)
         return mask
+
+    def crop_sides(self, image: np.ndarray) -> np.ndarray:
+        """
+        좌우 비율로 이미지를 잘라서 중앙 영역만 남긴다.
+        crop_left_ratio=0.1, crop_right_ratio=0.1이면 좌우 10%씩 제거.
+        """
+        h, w = image.shape[:2]
+        left_px = int(w * self.crop_left_ratio)
+        right_px = int(w * self.crop_right_ratio)
+        x1 = left_px
+        x2 = max(x1 + 1, w - right_px)
+        return image[:, x1:x2]
+
+    def filter_vertical_regions(self, mask: np.ndarray) -> np.ndarray:
+        """컨투어의 가로세로비와 최소 면적으로 필터링해 세로로 긴 흰색 영역만 남긴다."""
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        filtered = np.zeros_like(mask)
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < self.min_area:
+                continue
+            x, y, w, h = cv2.boundingRect(cnt)
+            if w == 0:
+                continue
+            aspect = h / float(w)
+            if aspect < self.min_aspect_ratio:
+                continue
+            cv2.drawContours(filtered, [cnt], -1, 255, thickness=-1)
+        return filtered
 
     # ----------------- Sliding Window Lane Fitting -----------------
 
