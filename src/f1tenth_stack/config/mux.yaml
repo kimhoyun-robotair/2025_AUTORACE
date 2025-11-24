@@ -9,3 +9,10 @@ ackermann_mux:
         topic   : teleop
         timeout : 0.2
         priority: 100
+      
+      # --- 여기를 추가하세요 ---
+      line_follow:
+        topic   : line_drive   # 라인 디텍션 명령이 들어올 토픽 이름
+        timeout : 0.2
+        priority: 200      # 20으로 설정 (Navigation보다 셈, 조이스틱보다 약함)
+      # -----------------------

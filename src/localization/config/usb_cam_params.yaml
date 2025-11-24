@@ -15,7 +15,7 @@ usb_cam:
     # --- 3. 노출 (Exposure) ---
     # 수동 제어를 위해 auto를 1(Manual)로 설정합니다.
     exposure_auto: 1
-    exposure_absolute: 50  # 범위: 1 ~ 5000 (너무 높으면 프레임 드랍 발생)
+    exposure_absolute: 10  # 범위: 1 ~ 5000 (너무 높으면 프레임 드랍 발생)
 
     # --- 4. 기타 이미지 보정 ---
     brightness: 0    # 기본값
