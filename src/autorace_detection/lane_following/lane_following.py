@@ -23,7 +23,7 @@ class LaneFollower(Node):
         super().__init__("lane_follower")
 
         # Parameters for simple steering control
-        self.declare_parameter("linear_speed", 0.4)
+        self.declare_parameter("linear_speed", 0.6)
         self.declare_parameter("angular_gain", 2.0)       # gain on normalized error
         self.declare_parameter("max_angular", 0.7)        # max angular speed
         self.declare_parameter("center_bias_px", 0.0)     # pixel bias if camera is offset
@@ -41,7 +41,7 @@ class LaneFollower(Node):
         self.create_subscription(Image, "/lane/yellow_mask", self.mask_cb, 10)
         # Publish to a dedicated lane-following control channel; FSM will republish to /cmd_vel.
         # (Changed from publishing directly to /cmd_vel to avoid bus contention.)
-        self.cmd_pub = self.create_publisher(Twist, "/control/lane_cmd", 10)
+        self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.get_logger().info("LaneFollower ready: sub /lane/yellow_mask -> pub /control/lane_cmd")
 
     def mask_cb(self, msg: Image):

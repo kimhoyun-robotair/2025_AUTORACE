@@ -34,9 +34,9 @@ class RedBlueLaneDetector(Node):
         self.declare_parameter('val_red_h', 255)
 
         # 파란색 HSV 범위 (대략적인 기본값)
-        self.declare_parameter('hue_blue_l', 100)
+        self.declare_parameter('hue_blue_l', 95)
         self.declare_parameter('hue_blue_h', 140)
-        self.declare_parameter('sat_blue_l', 100)
+        self.declare_parameter('sat_blue_l', 40)
         self.declare_parameter('sat_blue_h', 255)
         self.declare_parameter('val_blue_l', 100)
         self.declare_parameter('val_blue_h', 255)
@@ -50,7 +50,7 @@ class RedBlueLaneDetector(Node):
 
         self.sub = self.create_subscription(
             Image,
-            '/image_balanced',
+            '/image_bev',
             self.image_callback,
             10
         )
