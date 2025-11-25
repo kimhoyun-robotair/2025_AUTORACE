@@ -50,7 +50,7 @@ class RedBlueLaneDetector(Node):
 
         self.sub = self.create_subscription(
             Image,
-            '/image_bev',
+            '/image_balanced',
             self.image_callback,
             10
         )

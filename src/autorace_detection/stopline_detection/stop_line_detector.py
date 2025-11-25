@@ -17,7 +17,17 @@ class WhiteLaneDetector(Node):
     def __init__(self):
         super().__init__('white_lane_detector')
 
-        # 이건 흰색 정지선 및 횡단보도 탐지
+        '''
+        # 노란색 HSV 범위 파라미터
+        self.declare_parameter('hue_white_l', 15)
+        self.declare_parameter('hue_white_h', 40)
+        self.declare_parameter('saturation_white_l', 70)
+        self.declare_parameter('saturation_white_h', 255)
+        self.declare_parameter('lightness_white_l', 80)
+        self.declare_parameter('lightness_white_h', 255)
+        '''
+
+        # 이건 흰색 정지선 및 횡단보도 탐지 
         self.declare_parameter('hue_white_l', 0)
         self.declare_parameter('hue_white_h', 179)
         self.declare_parameter('saturation_white_l', 0)
@@ -32,7 +42,7 @@ class WhiteLaneDetector(Node):
         self.bridge = CvBridge()
         self.sub = self.create_subscription(
             Image,
-            '/image_bev',          # BevNode가 퍼블리시하는 BEV 이미지
+            '/image_balanced',          # BevNode가 퍼블리시하는 BEV 이미지
             self.image_callback,
             10
         )
