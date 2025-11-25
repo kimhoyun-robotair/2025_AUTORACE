@@ -23,7 +23,7 @@ transforms:
     # 위 값은 예시이며, 실제 로봇의 TF에 맞게 정확한 쿼터니언 값을 넣어야 합니다.
     rotation_quat: [0.0, 0.0, 1.0, 0.0] 
     
-    - parent: "base_link"
+  - parent: "base_link"
     child: "imu"
     translation: [0.183, 0.00, 0.063]
     rotation_quat: [0.0, 0.0, 0.0, 1.0] 
