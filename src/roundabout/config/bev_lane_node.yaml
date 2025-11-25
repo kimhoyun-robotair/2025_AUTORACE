@@ -1,0 +1,26 @@
+bev_lane_node:
+  ros__parameters:
+    image_topic: "/image_bev"
+    output_topic: "/lane_pose"
+
+    # BEV 이미지에서 1m가 몇 픽셀인지 (대충이라도 시작해서 나중에 튜닝)
+    px_per_meter: 200.0
+
+    # 관심 영역(ROI) - y는 이미지 row (위=0, 아래=height-1)
+    roi_y_min: 50            # 너무 먼 곳/노이즈 제외
+    roi_y_max: 250           # 너무 가까운 영역 제외 (자차 바로 앞)
+
+    # 최소 edge 픽셀 개수 (이보다 적으면 차선 못 찾은 것으로 간주)
+    min_edge_pixels: 300
+
+    # Canny 에지 파라미터
+    canny_threshold1: 50
+    canny_threshold2: 150
+
+    # 여러 row에서 샘플링할 때 step
+    sample_row_step: 5
+
+    
+    
+    
+    

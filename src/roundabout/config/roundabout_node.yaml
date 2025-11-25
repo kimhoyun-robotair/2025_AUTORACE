@@ -1,0 +1,47 @@
+roundabout_node:
+  ros__parameters:
+    # === 기둥/라운드어바웃 기본 ===
+    pillar_diameter_max: 0.58            # [m] 문제 조건: 지름 < 580mm
+    pillar_tracking_window_sec: 1.0      # [s] (지금은 pillar_static_window_sec와 사실상 동일)
+
+    roundabout_radius_lane_center: 1.5   # [m] 차선 중앙의 이론상 반경 (트랙 규격 보고 수정)
+    roundabout_entry_speed: 0.4          # [m/s] 진입 속도
+    roundabout_cruise_speed: 0.6         # [m/s] 내부 주행 속도
+
+    # === 내 차 물리 파라미터 (필요시 사용) ===
+    wheelbase: 0.26                      # [m] 축간 거리
+    track_width: 0.18                    # [m] 좌/우 바퀴 간 거리
+    wheel_radius: 0.05                   # [m] 바퀴 반지름
+
+    # === 상대 차량/안전 거리 ===
+    other_car_length: 0.35               # [m] 대략 길이
+    other_car_width: 0.20                # [m] 대략 폭
+    safe_front_distance: 0.7             # [m] 앞차와 여유 거리 (향후 gap 계산에 활용 가능)
+    safe_rear_distance: 0.5              # [m]
+    stop_distance_hard: 0.4              # [m] 이보다 가까우면 무조건 정지
+
+    # === 조향 이득 ===
+    k_lane_y: 1.2                        # 차선 lateral error 이득
+    k_lane_heading: 0.8                  # 차선 heading error 이득
+    k_radius: 0.5                        # 기둥 반경 오차 이득 (pillar 기반 원 궤도 유지)
+
+    max_steer_angle: 0.5                 # [rad] |steer| 제한
+    max_accel: 1.0                       # [m/s^2] (지금은 안 쓰지만 남겨둠)
+
+    # === 출구 관련 (6시 입구 → 12시 출구) ===
+    exit_angle_deg: 180.0                # [deg] 6시 기준 180도 회전 = 12시
+    exit_angle_tolerance_deg: 40.0       # [deg] 140~220deg 범위를 "출구 구간"으로 허용
+
+    # === 제어 루프 ===
+    control_hz: 30.0                     # [Hz] 메인 FSM 루프 주기
+    front_sector_deg: 60.0               # [deg] 전방 장애물 체크 각도 범위 (±30deg)
+    car_frame_id: "base_link"
+
+    # === 기둥 검출용 파라미터 ===
+    pillar_static_window_sec: 0.8        # [s] 최근 스캔 묶어서 "정적" 판단할 시간
+    pillar_min_samples_per_beam: 5       # 한 beam에서 최소 몇 번 이상 측정돼야 신뢰
+    pillar_max_std: 0.05                 # [m] 정적이라고 보기 위한 거리 표준편차 최대값
+    pillar_search_angle_deg: 120.0       # [deg] 앞쪽 ±60deg 범위에서만 pillar 후보 검색
+    pillar_min_radius: 0.2               # [m] 너무 가까운 건(자차, bumper 등) 무시
+    pillar_max_radius: 5.0               # [m] 너무 먼 건 무시
+
