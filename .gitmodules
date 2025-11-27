@@ -1,3 +1,10 @@
 [submodule "src/transport_drivers"]
 	path = src/transport_drivers
 	url = https://github.com/ros-drivers/transport_drivers.git
+[submodule "src/gapFinder"]
+	path = src/gapFinder
+	url = https://github.com/12B-theDon/gapFinder.git
+	branch = tf_modified
+[submodule "src/yolo_ros"]
+	path = src/yolo_ros
+	url = https://github.com/kimhoyun-robotair/yolo_ros.git
