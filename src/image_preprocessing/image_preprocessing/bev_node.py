@@ -75,7 +75,7 @@ class BevNode(Node):
         qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                          history=HistoryPolicy.KEEP_LAST, depth=5)
         self.bridge = CvBridge()
-        self.sub = self.create_subscription(Image, '/image_raw', self.image_cb, qos)
+        self.sub = self.create_subscription(Image, '/camera/image_raw', self.image_cb, qos)
         self.pub = self.create_publisher(Image, '/image_bev', 10)
 
         # lazy members

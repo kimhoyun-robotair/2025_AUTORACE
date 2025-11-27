@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Lane following controller.
-- Subscribes: /lane/yellow_mask (from lane_detector.py, BEV mask BGR image)
-- Publishes:  /control/lane_cmd (Twist proposal for FSM)
+- Subscribes: /yellow_lane_mask (from lane_detector.py, BEV mask BGR image)
+- Publishes:  /lane/cmd_vel (Twist proposal for FSM)
+- Publishes:  /lane/has_lane (Bool) for validity gating
 Strategy:
   - Compute mask centroid (cx) and steer based on offset from image center.
   - If mask is lost for a few frames, stop for safety.
@@ -23,10 +24,10 @@ class LaneFollower(Node):
         super().__init__("lane_follower")
 
         # Parameters for simple steering control
-        self.declare_parameter("linear_speed", 0.4)
-        self.declare_parameter("angular_gain", 2.0)       # gain on normalized error
-        self.declare_parameter("max_angular", 0.7)        # max angular speed
-        self.declare_parameter("center_bias_px", 0.0)     # pixel bias if camera is offset
+        self.declare_parameter("linear_speed", 0.3)
+        self.declare_parameter("angular_gain", 2.5)       # gain on normalized error
+        self.declare_parameter("max_angular", 0.3)        # max angular speed
+        self.declare_parameter("center_bias_px", 20.0)     # pixel bias if camera is offset
         self.declare_parameter("lost_stop_frames", 5)     # consecutive lost frames before stop
 
         self.linear_speed = float(self.get_parameter("linear_speed").value)
@@ -38,11 +39,12 @@ class LaneFollower(Node):
         self.bridge = CvBridge()
         self.lost_counter = 0
 
-        self.create_subscription(Image, "/lane/yellow_mask", self.mask_cb, 10)
+        self.create_subscription(Image, "/yellow_lane_mask", self.mask_cb, 10)
         # Publish to a dedicated lane-following control channel; FSM will republish to /cmd_vel.
         # (Changed from publishing directly to /cmd_vel to avoid bus contention.)
-        self.cmd_pub = self.create_publisher(Twist, "/control/lane_cmd", 10)
-        self.get_logger().info("LaneFollower ready: sub /lane/yellow_mask -> pub /control/lane_cmd")
+        self.cmd_pub = self.create_publisher(Twist, "/lane/cmd_vel", 10)
+        self.valid_pub = self.create_publisher(Bool, "/lane/has_lane", 10)
+        self.get_logger().info("LaneFollower ready: sub /yellow_lane_mask -> pub /lane/cmd_vel + /lane/has_lane")
 
     def mask_cb(self, msg: Image):
         # Convert to grayscale mask
@@ -52,11 +54,13 @@ class LaneFollower(Node):
         m = cv2.moments(gray)
         if m["m00"] < 1e-3:
             self.lost_counter += 1
+            self.valid_pub.publish(Bool(data=False))
             if self.lost_counter >= self.lost_stop_frames:
                 self._publish_stop()
             return
 
         self.lost_counter = 0
+        self.valid_pub.publish(Bool(data=True))
         cx = m["m10"] / m["m00"]
         width = gray.shape[1]
         target = width / 2.0 + self.center_bias_px

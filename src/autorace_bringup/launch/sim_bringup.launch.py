@@ -17,6 +17,9 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
+    sim_share = get_package_share_directory("autorace_sim_classic")
+    spawn_launch = os.path.join(sim_share, "launch", "spawn_robot.launch.py")
+
     image_share = get_package_share_directory('image_preprocessing')
     bev_launch = os.path.join(image_share, 'launch', 'image_preprocessing.launch.py')
 
@@ -61,6 +64,10 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(spawn_launch),
+                launch_arguments={}.items(),
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(bev_launch),
                 launch_arguments={}.items(),

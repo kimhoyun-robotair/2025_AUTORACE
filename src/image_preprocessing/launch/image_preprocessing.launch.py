@@ -13,22 +13,23 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='image_preprocessing',
-            executable='static_tf_node.py',
+            executable='static_tf_node',
             name='static_tf_node',
             output='screen',
             parameters=[{'tf_config_path': tf_yaml}],
         ),
         Node(
             package='image_preprocessing',
-            executable='bev_node.py',
+            executable='bev_node',
             name='bev_node',
             output='screen',
             parameters=[{
                 'config_path': cam_yaml,
                 'base_frame': 'base_link',
-                #'camera_frame': 'camera_optical_frame',
-                'camera_frame': 'left_camera_link_optical',
+                # 'camera_frame': 'camera_optical_frame',
+                'camera_frame': 'left_camera_link_optical', # For Simulation
                 'bev_frame': 'bev',
             }],
         ),
     ])
+

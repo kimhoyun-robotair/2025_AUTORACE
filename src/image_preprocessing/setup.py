@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import os
 from glob import glob
 
-package_name = 'localization'
+package_name = 'image_preprocessing'
 
 setup(
     name=package_name,
@@ -24,8 +24,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'bev_node = localization.bev_node:main',
-            'static_tf_node = localization.static_tf_node:main',
+            'bev_node = image_preprocessing.bev_node:main',
+            'static_tf_node = image_preprocessing.static_tf_node:main',
         ],
     },
 )

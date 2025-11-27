@@ -34,15 +34,22 @@ class RedBlueLaneDetector(Node):
         self.declare_parameter('val_red_h', 255)
 
         # 파란색 HSV 범위 (대략적인 기본값)
-        self.declare_parameter('hue_blue_l', 100)
+        self.declare_parameter('hue_blue_l', 95)
         self.declare_parameter('hue_blue_h', 140)
-        self.declare_parameter('sat_blue_l', 100)
+        self.declare_parameter('sat_blue_l', 40)
         self.declare_parameter('sat_blue_h', 255)
         self.declare_parameter('val_blue_l', 100)
         self.declare_parameter('val_blue_h', 255)
 
         # 노이즈 제거용 최소 픽셀 개수
         self.declare_parameter('min_pixel_count', 1000)
+        self.declare_parameter('red_dominance_ratio', 1.5)
+
+        # 크롭 비율 (0.0~1.0). 상/하/좌/우 순으로 잘라내기.
+        self.declare_parameter('crop_top', 0.8)
+        self.declare_parameter('crop_bottom', 0.0)
+        self.declare_parameter('crop_left', 0.4)
+        self.declare_parameter('crop_right', 0.4)
 
         self.update_params_from_server()
 
@@ -96,6 +103,12 @@ class RedBlueLaneDetector(Node):
         self.val_blue_h = self.get_parameter('val_blue_h').value
 
         self.min_pixel_count = self.get_parameter('min_pixel_count').value
+        self.red_dominance_ratio = self.get_parameter('red_dominance_ratio').value
+
+        self.crop_top = self.get_parameter('crop_top').value
+        self.crop_bottom = self.get_parameter('crop_bottom').value
+        self.crop_left = self.get_parameter('crop_left').value
+        self.crop_right = self.get_parameter('crop_right').value
 
     def image_callback(self, msg: Image):
         # 프레임 드랍(2프레임 중 1프레임만 처리) – 필요 없으면 지워도 됨
@@ -105,6 +118,9 @@ class RedBlueLaneDetector(Node):
 
         # ROS Image -> OpenCV BGR
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+        # 크롭 적용 (비율)
+        img = self.apply_crop(img)
 
         # HSV로 변환
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -118,7 +134,7 @@ class RedBlueLaneDetector(Node):
         blue_count = cv2.countNonZero(mask_blue)
 
         # 색상 결정 로직: red가 충분히 있을 때만 red, 아니면 blue, 둘 다 부족하면 unknown
-        if red_count >= self.min_pixel_count:
+        if red_count >= self.min_pixel_count and red_count >= blue_count * self.red_dominance_ratio:
             color = 'red'
             active_mask = mask_red
         elif blue_count >= self.min_pixel_count:
@@ -167,26 +183,33 @@ class RedBlueLaneDetector(Node):
             cv2.circle(debug_img, (cx_mask, cy_mask), 6, (0, 255, 0), 2)
             cv2.line(debug_img, (cx_img, cy_mask), (cx_mask, cy_mask), (0, 255, 255), 2)
 
+        # 이미지 크기에 따라 텍스트 크기/위치 자동 조정
+        base = min(h, w)
+        font_scale = max(0.5, min(1.5, base / 400.0))
+        thickness = 1 if base < 400 else 2
+        text_y1 = int(0.1 * h)
+        text_y2 = int(0.18 * h)
+
         cv2.putText(
             debug_img,
-            f'Color: {color}',
-            (30, 40),
+            f'{color}',
+            (int(0.06 * w), text_y1),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,
+            font_scale,
             (255, 255, 255),
-            2,
+            thickness,
             cv2.LINE_AA
         )
-        cv2.putText(
-            debug_img,
-            f'Offset: {center_offset:.3f}',
-            (30, 80),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (200, 200, 200),
-            2,
-            cv2.LINE_AA
-        )
+        #cv2.putText(
+        #    debug_img,
+        #    f'{center_offset:.3f}',
+        #    (int(0.03 * w), text_y2),
+        #    cv2.FONT_HERSHEY_SIMPLEX,
+        #    max(0.5, font_scale * 0.8),
+        #    (200, 200, 200),
+        #    thickness,
+        #    cv2.LINE_AA
+        #)
 
         # ROS Image로 퍼블리시
         out_msg = self.bridge.cv2_to_imgmsg(debug_img, encoding='bgr8')
@@ -241,6 +264,27 @@ class RedBlueLaneDetector(Node):
 
         mask = cv2.inRange(hsv, lower_blue, upper_blue)
         return mask
+
+    def apply_crop(self, img: np.ndarray) -> np.ndarray:
+        """
+        비율 기반 크롭. 값이 너무 커서 영상이 사라지면 크롭을 스킵.
+        """
+        h, w = img.shape[:2]
+        top_f = min(max(self.crop_top, 0.0), 0.95)
+        bottom_f = min(max(self.crop_bottom, 0.0), 0.95)
+        left_f = min(max(self.crop_left, 0.0), 0.95)
+        right_f = min(max(self.crop_right, 0.0), 0.95)
+
+        if top_f + bottom_f >= 0.98 or left_f + right_f >= 0.98:
+            self.get_logger().warn('Crop fractions too large; skipping crop this frame.')
+            return img
+
+        top_px = int(round(top_f * h))
+        bottom_px = int(round(bottom_f * h))
+        left_px = int(round(left_f * w))
+        right_px = int(round(right_f * w))
+
+        return img[top_px:h - bottom_px, left_px:w - right_px]
 
 
 def main(args=None):
