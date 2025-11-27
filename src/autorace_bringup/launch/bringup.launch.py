@@ -20,6 +20,27 @@ def generate_launch_description():
     image_share = get_package_share_directory('image_preprocessing')
     bev_launch = os.path.join(image_share, 'launch', 'image_preprocessing.launch.py')
 
+    pkg_f1tenth = get_package_share_directory('f1tenth_stack')
+    launch_vesc = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_f1tenth, 'launch', 'bringup_launch.py')
+        )
+    )
+
+    pkg_lidar = get_package_share_directory('rplidar_ros') 
+    launch_lidar = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_lidar, 'launch', 'rplidar_s1_launch.py') 
+        )
+    )
+
+    pkg_imu = get_package_share_directory('razor_imu_9dof_ros2') 
+    launch_imu = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_imu, 'launch', 'razor.launch.py') 
+        )
+    )
+
     detection_nodes = [
         Node(
             package="autorace_detection",
@@ -57,6 +78,12 @@ def generate_launch_description():
             name="stop_line_stop",
             output="screen",
         ),
+        Node(
+            package="autorace_bringup",
+            executable="twist_to_ackermann",
+            name="twist_to_ackermann",
+            output="screen",
+        ),
     ]
 
     return LaunchDescription(
@@ -65,6 +92,9 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(bev_launch),
                 launch_arguments={}.items(),
             ),
+            launch_imu,
+            launch_lidar,
+            launch_vesc,
         ]
-        + detection_nodes
+        # + detection_nodes
     )
