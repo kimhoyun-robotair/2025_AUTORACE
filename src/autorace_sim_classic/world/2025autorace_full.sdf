@@ -119,6 +119,60 @@
       </plugin>
     </model>
 
+    <!-- 실린더 장애물 -->
+    <model name="cylinder_0">
+      <!-- x y z roll pitch yaw  (z는 실린더 높이의 절반으로 해서 바닥 위에 세움) -->
+      <pose>-1.5 -0.32 0.25 0 0 0</pose>
+      <static>1</static>
+
+      <link name="link">
+        <!-- 관성은 대충 값만 넣어도 시뮬은 돌아감 (정확히 하려면 공식을 써서 계산) -->
+        <inertial>
+          <mass>5.0</mass>
+          <inertia>
+            <ixx>0.3</ixx>
+            <iyy>0.3</iyy>
+            <izz>0.06</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+
+        <!-- 충돌 영역 -->
+        <collision name="collision">
+          <geometry>
+            <cylinder>
+              <radius>0.15</radius>
+              <length>0.5</length>
+            </cylinder>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+
+        <!-- 시각 표현 -->
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.15</radius>
+              <length>0.5</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Red</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+
     <!-- 트랙 바닥 텍스처 모델 -->
     <include>
       <uri>model://2025autorace</uri>

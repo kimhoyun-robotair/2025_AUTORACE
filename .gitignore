@@ -5,6 +5,7 @@ log/
 .devenv/
 .colcon_workspace
 .vscode/
+.codex/
 
 # Ignore Python cache files
 __pycache__/

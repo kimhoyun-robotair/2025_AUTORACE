@@ -30,36 +30,36 @@ def generate_launch_description():
             name="lane_detector",
             output="screen",
         ),
-        Node(
-            package="autorace_detection",
-            executable="lane_controller",
-            name="lane_following",
-            output="screen",
-        ),
-        Node(
-            package="autorace_detection",
-            executable="red_blue_detector",
-            name="color_detection",
-            output="screen",
-        ),
-        Node(
-            package="autorace_detection",
-            executable="color_controller",
-            name="color_based_driving",
-            output="screen",
-        ),
-        Node(
-            package="autorace_detection",
-            executable="stopline_detection",
-            name="stop_line_detector",
-            output="screen",
-        ),
-        Node(
-            package="autorace_detection",
-            executable="stopline_controller",
-            name="stop_line_stop",
-            output="screen",
-        ),
+        #Node(
+        #    package="autorace_detection",
+        #    executable="lane_controller",
+        #    name="lane_following",
+        #    output="screen",
+        #),
+        #Node(
+        #    package="autorace_detection",
+        #    executable="red_blue_detector",
+        #    name="color_detection",
+        #    output="screen",
+        #),
+        #Node(
+        #    package="autorace_detection",
+        #    executable="color_controller",
+        #    name="color_based_driving",
+        #    output="screen",
+        #),
+        #Node(
+        #    package="autorace_detection",
+        #    executable="stopline_detection",
+        #    name="stop_line_detector",
+        #    output="screen",
+        #),
+        #Node(
+        #    package="autorace_detection",
+        #    executable="stopline_controller",
+        #    name="stop_line_stop",
+        #    output="screen",
+        #),
     ]
 
     return LaunchDescription(
