@@ -1,0 +1,14 @@
+usb_cam:
+  ros__parameters:
+    # --- 1. 비디오 포맷 설정 (속도/반응성 최우선) ---
+    video_device: "/dev/video0"
+    framerate: 30.0
+    image_width: 640
+    image_height: 480
+    pixel_format: "yuyv"   # 압축 없는 포맷 (CPU 부하 적음)
+
+    # --- 4. 기타 이미지 보정 ---
+    brightness: 0    # 기본값
+    contrast: 32     # 기본값
+    saturation: 60   # 기본값
+    gain: 0

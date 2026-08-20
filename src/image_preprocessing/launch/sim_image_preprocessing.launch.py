@@ -27,18 +27,10 @@ def generate_launch_description():
             parameters=[{
                 'config_path': cam_yaml,
                 'base_frame': 'base_link',
-                'camera_frame': 'camera_optical_frame',
-                # 'camera_frame': 'left_camera_link_optical', # For Simulation
+                # 'camera_frame': 'camera_optical_frame',
+                'camera_frame': 'left_camera_link_optical', # For Simulation
                 'bev_frame': 'bev',
             }],
         ),
-        Node(
-            package='usb_cam',
-            executable='usb_cam_node_exe',
-            name='usb_cam',
-            # 위에서 정의한 cam_yaml 변수를 그대로 사용
-            parameters=[usb_cam_yaml], 
-            output='screen'
-        )
     ])
 

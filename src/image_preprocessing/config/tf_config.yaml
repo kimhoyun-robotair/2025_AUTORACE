@@ -6,7 +6,6 @@ transforms:
   # * 광학 프레임 회전 (x->-y, y->-z, z->x)이 이미 적용된 최종 쿼터니언을 넣어야 합니다.
   - parent: "base_link"
     child: "camera_optical_frame"
-    # child: "left_camera_optical_frame" # For Simulation
     translation: [0.28, 0.00, 0.15]
     # RPY(roll=180, pitch=0, yaw=-90) -> (0.707, 0.707, 0, 0)
     # 위 값은 예시이며, 실제 로봇의 TF에 맞게 정확한 쿼터니언 값을 넣어야 합니다.
@@ -22,4 +21,9 @@ transforms:
     translation: [0.15, 0.00, 0.19]
     # RPY(roll=180, pitch=0, yaw=-90) -> (0.707, 0.707, 0, 0)
     # 위 값은 예시이며, 실제 로봇의 TF에 맞게 정확한 쿼터니언 값을 넣어야 합니다.
+    rotation_quat: [0.0, 0.0, 1.0, 0.0] 
+    
+  - parent: "base_link"
+    child: "imu"
+    translation: [0.183, 0.00, 0.063]
     rotation_quat: [0.0, 0.0, 1.0, 0.0] 

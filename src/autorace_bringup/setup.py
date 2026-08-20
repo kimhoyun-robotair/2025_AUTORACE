@@ -27,6 +27,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'twist_to_ackermann = autorace_bringup.twist_to_ackermann:main',
         ],
     },
 )
